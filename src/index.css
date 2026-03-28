@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 36 86% 97%;
+  --foreground: 33 14% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 33 14% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 33 14% 17%;
+  --primary: 27 100% 29%;
+  --primary-foreground: 34 100% 98%;
+  --primary-container: 27 100% 51%;
+  --secondary: 42 91% 69%;
+  --secondary-foreground: 33 14% 17%;
+  --secondary-container: 42 91% 69%;
+  --muted: 33 35% 93%;
+  --muted-foreground: 39 8% 35%;
+  --accent: 33 35% 93%;
+  --accent-foreground: 33 14% 17%;
+  --border: 34 9% 66%;
+  --input: 34 9% 66%;
+  --ring: 27 100% 29%;
+  --outline: 34 9% 66%;
+  --outline-variant: 34 9% 66%;
+  --surface: 36 86% 97%;
+  --surface-container-low: 33 44% 93%;
+  --surface-container-lowest: 0 0% 100%;
+  --surface-container-high: 35 31% 88%;
+  --surface-bright: 0 0% 100%;
+  --surface-variant: 35 31% 88%;
+  --radius: 2rem;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background-color: hsl(var(--surface));
+  color: hsl(var(--foreground));
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
