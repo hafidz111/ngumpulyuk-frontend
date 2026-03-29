@@ -1,8 +1,18 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Bell, Compass, Home, Map, Search, User, Users } from 'lucide-react';
+import {
+  Bell,
+  Compass,
+  Home,
+  LogOut,
+  Map,
+  Search,
+  User,
+  Users,
+} from 'lucide-react';
 
 import { ROUTES } from '@/shared/config/routes';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/presentation/auth/hooks/use-auth';
 
 const navItems = [
   { to: ROUTES.home, label: 'Home', icon: Home, end: true },
@@ -13,6 +23,8 @@ const navItems = [
 ];
 
 export function HomeAppHeader() {
+  const { logout } = useAuth();
+
   return (
     <header className='sticky top-0 z-40 border-b border-border/60 bg-surface-bright/95 backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6'>
@@ -24,7 +36,7 @@ export function HomeAppHeader() {
         </Link>
 
         <nav className='hidden flex-1 items-center justify-center gap-1 md:flex'>
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+          {navItems.map(({ to, label, end, icon: NavIcon }) => (
             <NavLink
               key={to}
               to={to}
@@ -38,7 +50,7 @@ export function HomeAppHeader() {
                 )
               }
             >
-              <Icon className='size-4 opacity-90' aria-hidden />
+              <NavIcon className='size-4 opacity-90' aria-hidden />
               {label}
             </NavLink>
           ))}
@@ -60,6 +72,14 @@ export function HomeAppHeader() {
           >
             <Search className='size-5' />
           </button>
+          <button
+            type='button'
+            className='rounded-full p-2.5 text-foreground hover:bg-muted'
+            aria-label='Keluar'
+            onClick={() => void logout()}
+          >
+            <LogOut className='size-5' />
+          </button>
         </div>
       </div>
 
@@ -67,7 +87,7 @@ export function HomeAppHeader() {
         className='flex gap-1 overflow-x-auto border-t border-border/50 px-4 pb-3 pt-2 md:hidden'
         aria-label='Navigasi utama'
       >
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {navItems.map(({ to, label, end, icon: NavIcon }) => (
           <NavLink
             key={to}
             to={to}
@@ -81,7 +101,7 @@ export function HomeAppHeader() {
               )
             }
           >
-            <Icon className='size-3.5' aria-hidden />
+            <NavIcon className='size-3.5' aria-hidden />
             {label}
           </NavLink>
         ))}

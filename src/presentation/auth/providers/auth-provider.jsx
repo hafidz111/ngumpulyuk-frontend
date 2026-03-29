@@ -1,7 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { displayNameFromEmail } from '../../../shared/lib/user-display-name';
+import { displayNameFromEmail } from '@/shared/lib/user-display-name';
+import { authApi } from '@/infrastructure/auth/auth-api';
+import {
+  clearAllAuthStorage,
+  setAccessToken,
+  setRefreshToken,
+  getAccessToken,
+  getRefreshToken,
+} from '@/infrastructure/http/token-storage';
 import { AuthContext } from '../context/auth-context';
+
+const USER_KEY = 'ngumpulyuk.user';
 
 function onboardingKeyForEmail(email) {
   if (!email) return null;
@@ -14,20 +24,65 @@ function readOnboardedForEmail(email) {
   return key ? localStorage.getItem(key) === '1' : false;
 }
 
-export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+function loadStoredUser() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
-  const login = useCallback((payload = {}) => {
-    const email = typeof payload.email === 'string' ? payload.email.trim() : '';
-    const isOnboarded = readOnboardedForEmail(email);
+function persistUser(user) {
+  if (typeof window === 'undefined' || !user) return;
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+function buildUserState({ email, fullName }) {
+  const e = String(email ?? '').trim();
+  const fn = String(fullName ?? '').trim();
+  const displayName = fn || displayNameFromEmail(e);
+  return {
+    email: e,
+    fullName: fn,
+    displayName,
+    isOnboarded: readOnboardedForEmail(e),
+  };
+}
+
+export function AuthProvider({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    Boolean(getAccessToken()),
+  );
+  const [user, setUser] = useState(() => {
+    const token = getAccessToken();
+    if (!token) return null;
+    return (
+      loadStoredUser() ?? {
+        email: '',
+        fullName: '',
+        displayName: 'Pengguna',
+        isOnboarded: false,
+      }
+    );
+  });
+
+  /**
+   * Sets session after successful login (or verify-email if API returns tokens).
+   * @param {{ access: string | null; refresh?: string | null; email: string; fullName?: string }} payload
+   */
+  const setSession = useCallback((payload) => {
+    const { access, refresh, email, fullName } = payload;
+    if (access) setAccessToken(access);
+    if (refresh !== undefined && refresh !== null) setRefreshToken(refresh);
+    const next = buildUserState({ email, fullName });
+    persistUser(next);
+    setUser(next);
     setIsAuthenticated(true);
-    setUser({
-      email,
-      displayName: displayNameFromEmail(email),
-      isOnboarded,
-    });
-    return { isOnboarded };
   }, []);
 
   const completeOnboarding = useCallback(() => {
@@ -35,28 +90,38 @@ export function AuthProvider({ children }) {
       if (!current) return current;
       if (current.email) {
         const key = onboardingKeyForEmail(current.email);
-        if (key) {
-          localStorage.setItem(key, '1');
-        }
+        if (key) localStorage.setItem(key, '1');
       }
-      return { ...current, isOnboarded: true };
+      const updated = { ...current, isOnboarded: true };
+      persistUser(updated);
+      return updated;
     });
   }, []);
 
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
-    setUser(null);
+  const logout = useCallback(async () => {
+    const refreshToken = getRefreshToken();
+    try {
+      if (refreshToken) {
+        await authApi.logout({ refresh_token: refreshToken });
+      }
+    } catch {
+      /* tetap bersihkan sesi lokal */
+    } finally {
+      clearAllAuthStorage();
+      setIsAuthenticated(false);
+      setUser(null);
+    }
   }, []);
 
   const value = useMemo(
     () => ({
       isAuthenticated,
       user,
-      login,
+      setSession,
       logout,
       completeOnboarding,
     }),
-    [isAuthenticated, user, login, logout, completeOnboarding],
+    [isAuthenticated, user, setSession, logout, completeOnboarding],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

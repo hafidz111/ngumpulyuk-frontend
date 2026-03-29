@@ -3,13 +3,36 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 import { ROUTES } from '../shared/config/routes';
 
-const LandingPage = lazy(() => import('../presentation/landing/landing-page.jsx'));
-const LoginPage = lazy(() => import('../presentation/auth/pages/login-page.jsx'));
-const RegisterPage = lazy(() => import('../presentation/auth/pages/register-page.jsx'));
-const OnboardingPage = lazy(() => import('../presentation/onboarding/onboarding-page.jsx'));
-const ComingSoonPage = lazy(() => import('../presentation/coming-soon/coming-soon-page.jsx'));
-const NotFoundPage = lazy(() => import('../presentation/error-pages/not-found-page.jsx'));
-const HttpErrorPage = lazy(() => import('../presentation/error-pages/http-error-page.jsx'));
+const LandingPage = lazy(
+  () => import('../presentation/landing/landing-page.jsx'),
+);
+const LoginPage = lazy(
+  () => import('../presentation/auth/pages/login-page.jsx'),
+);
+const RegisterPage = lazy(
+  () => import('../presentation/auth/pages/register-page.jsx'),
+);
+const VerifyEmailPage = lazy(
+  () => import('../presentation/auth/pages/verify-email-page.jsx'),
+);
+const ForgotPasswordPage = lazy(
+  () => import('../presentation/auth/pages/forgot-password-page.jsx'),
+);
+const ResetPasswordPage = lazy(
+  () => import('../presentation/auth/pages/reset-password-page.jsx'),
+);
+const OnboardingPage = lazy(
+  () => import('../presentation/onboarding/onboarding-page.jsx'),
+);
+const ComingSoonPage = lazy(
+  () => import('../presentation/coming-soon/coming-soon-page.jsx'),
+);
+const NotFoundPage = lazy(
+  () => import('../presentation/error-pages/not-found-page.jsx'),
+);
+const HttpErrorPage = lazy(
+  () => import('../presentation/error-pages/http-error-page.jsx'),
+);
 
 function RouteFallback() {
   return (
@@ -19,7 +42,9 @@ function RouteFallback() {
   );
 }
 
-const suspense = (node) => <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
+const suspense = (node) => (
+  <Suspense fallback={<RouteFallback />}>{node}</Suspense>
+);
 
 const router = createBrowserRouter([
   {
@@ -33,6 +58,18 @@ const router = createBrowserRouter([
   {
     path: ROUTES.register,
     element: suspense(<RegisterPage />),
+  },
+  {
+    path: ROUTES.verifyEmail,
+    element: suspense(<VerifyEmailPage />),
+  },
+  {
+    path: ROUTES.forgotPassword,
+    element: suspense(<ForgotPasswordPage />),
+  },
+  {
+    path: ROUTES.passwordResetConfirm,
+    element: suspense(<ResetPasswordPage />),
   },
   {
     path: ROUTES.onboarding,
