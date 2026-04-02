@@ -50,4 +50,11 @@ export const authApi = {
   google(body) {
     return apiClient.post('/v1/auth/google/', body);
   },
+
+  /**
+   * @param {{ email: string }} body
+   */
+  resendVerification(body) {
+    return apiClient.post('/v1/auth/resend-verification/', body);
+  },
 };

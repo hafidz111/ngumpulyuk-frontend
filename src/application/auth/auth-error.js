@@ -17,6 +17,13 @@ export function getAuthErrorMessage(
   if (data && typeof data === 'object') {
     const d = /** @type {Record<string, unknown>} */ (data);
 
+    if (d.success === false && d.error && typeof d.error === 'object') {
+      const nested = /** @type {Record<string, unknown>} */ (d.error);
+      if (typeof nested.message === 'string' && nested.message.trim()) {
+        return nested.message;
+      }
+    }
+
     if (d.detail != null) {
       const detail = d.detail;
       if (typeof detail === 'string') return detail;

@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
 import { mapLoginResponse } from '@/application/auth/map-auth-response';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
+import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
 import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
@@ -12,19 +14,63 @@ import { Label } from '@/presentation/components/ui/label';
 import { useAuth } from '../hooks/use-auth';
 import { AuthSplitLayout } from '../components/auth-split-layout';
 
-const PENDING_EMAIL_KEY = 'ngumpulyuk.pendingVerificationEmail';
+const RESEND_COOLDOWN_SEC = 60;
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setSession } = useAuth();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resendError, setResendError] = useState('');
+  const [isResending, setIsResending] = useState(false);
+  const [cooldownSec, setCooldownSec] = useState(0);
 
-  const pendingEmail =
+  const stateEmail =
+    location.state && typeof location.state === 'object' && 'email' in location.state
+      ? String(/** @type {{ email?: string }} */ (location.state).email ?? '')
+      : '';
+
+  const pendingFromStorage =
     typeof window !== 'undefined'
-      ? sessionStorage.getItem(PENDING_EMAIL_KEY)
+      ? sessionStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY)
       : null;
+
+  const resolvedEmail = useMemo(() => {
+    const fromStore = pendingFromStorage?.trim();
+    if (fromStore) return fromStore;
+    return stateEmail.trim();
+  }, [pendingFromStorage, stateEmail]);
+
+  useEffect(() => {
+    if (stateEmail && typeof window !== 'undefined') {
+      sessionStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, stateEmail.trim());
+    }
+  }, [stateEmail]);
+
+  useEffect(() => {
+    if (cooldownSec <= 0) return undefined;
+    const t = setInterval(() => {
+      setCooldownSec((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [cooldownSec]);
+
+  async function handleResend() {
+    if (cooldownSec > 0 || !resolvedEmail || isResending) return;
+    setResendError('');
+    setIsResending(true);
+    try {
+      await authApi.resendVerification({ email: resolvedEmail });
+      toast.success('Kode verifikasi dikirim ke email kamu.', { duration: 4000 });
+      setCooldownSec(RESEND_COOLDOWN_SEC);
+    } catch (err) {
+      setResendError(getAuthErrorMessage(err, 'Gagal mengirim ulang kode.'));
+    } finally {
+      setIsResending(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -37,7 +83,7 @@ export default function VerifyEmailPage() {
     setIsSubmitting(true);
     try {
       const { data } = await authApi.verifyEmail({ otp: code });
-      sessionStorage.removeItem(PENDING_EMAIL_KEY);
+      sessionStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
       const mapped = mapLoginResponse(
         data && typeof data === 'object'
           ? /** @type {Record<string, unknown>} */ (data)
@@ -49,13 +95,20 @@ export default function VerifyEmailPage() {
           refresh: mapped.refresh,
           email: mapped.email,
           fullName: mapped.fullName,
+          onboardingCompleted: mapped.onboardingCompleted,
         });
-        const onboarded = mapped.email
-          ? localStorage.getItem(
-              `ngumpulyuk.onboarded.${mapped.email.toLowerCase()}`,
-            ) === '1'
-          : false;
-        navigate(onboarded ? ROUTES.home : ROUTES.onboarding, {
+        const resolvedEmail = mapped.email;
+        const isOnboarded =
+          typeof mapped.onboardingCompleted === 'boolean'
+            ? mapped.onboardingCompleted
+            : Boolean(
+                resolvedEmail &&
+                  localStorage.getItem(
+                    `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
+                  ) === '1',
+              );
+        toast.success('Email terverifikasi.', { duration: 4000 });
+        navigate(isOnboarded ? ROUTES.home : ROUTES.onboarding, {
           replace: true,
         });
         return;
@@ -84,8 +137,8 @@ export default function VerifyEmailPage() {
                 Verifikasi email
               </h1>
               <p className='mt-2 text-sm text-muted-foreground'>
-                {pendingEmail
-                  ? `Masukkan kode OTP yang dikirim ke ${pendingEmail}.`
+                {resolvedEmail
+                  ? `Masukkan kode OTP yang dikirim ke ${resolvedEmail}.`
                   : 'Masukkan kode OTP dari email kamu.'}
               </p>
             </div>
@@ -120,6 +173,35 @@ export default function VerifyEmailPage() {
             >
               {isSubmitting ? 'Memverifikasi…' : 'Verifikasi'}
             </Button>
+
+            <div className='flex flex-col items-center gap-2 border-t border-border/60 pt-4'>
+              <p className='text-center text-xs text-muted-foreground'>
+                Tidak dapat kode?
+              </p>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={
+                  !resolvedEmail ||
+                  isResending ||
+                  cooldownSec > 0 ||
+                  isSubmitting
+                }
+                onClick={() => void handleResend()}
+                className='h-11 rounded-full border-border px-6'
+              >
+                {isResending
+                  ? 'Mengirim…'
+                  : cooldownSec > 0
+                    ? `Kirim ulang (${cooldownSec}s)`
+                    : 'Kirim ulang kode'}
+              </Button>
+              {resendError ? (
+                <p className='text-center text-sm text-destructive' role='alert'>
+                  {resendError}
+                </p>
+              ) : null}
+            </div>
           </form>
         </Card>
 

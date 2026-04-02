@@ -42,15 +42,19 @@ function persistUser(user) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-function buildUserState({ email, fullName }) {
+function buildUserState({ email, fullName, onboardingCompleted }) {
   const e = String(email ?? '').trim();
   const fn = String(fullName ?? '').trim();
   const displayName = fn || displayNameFromEmail(e);
+  const isOnboarded =
+    typeof onboardingCompleted === 'boolean'
+      ? onboardingCompleted
+      : readOnboardedForEmail(e);
   return {
     email: e,
     fullName: fn,
     displayName,
-    isOnboarded: readOnboardedForEmail(e),
+    isOnboarded,
   };
 }
 
@@ -73,13 +77,28 @@ export function AuthProvider({ children }) {
 
   /**
    * Sets session after successful login (or verify-email if API returns tokens).
-   * @param {{ access: string | null; refresh?: string | null; email: string; fullName?: string }} payload
+   * @param {{
+   *   access: string | null;
+   *   refresh?: string | null;
+   *   email: string;
+   *   fullName?: string;
+   *   onboardingCompleted?: boolean | null;
+   * }} payload
    */
   const setSession = useCallback((payload) => {
-    const { access, refresh, email, fullName } = payload;
+    const { access, refresh, email, fullName, onboardingCompleted } = payload;
     if (access) setAccessToken(access);
     if (refresh !== undefined && refresh !== null) setRefreshToken(refresh);
-    const next = buildUserState({ email, fullName });
+    const e = String(email ?? '').trim();
+    const key = onboardingKeyForEmail(e);
+    if (typeof onboardingCompleted === 'boolean' && key) {
+      if (onboardingCompleted) {
+        localStorage.setItem(key, '1');
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+    const next = buildUserState({ email, fullName, onboardingCompleted });
     persistUser(next);
     setUser(next);
     setIsAuthenticated(true);

@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { isEmailNotVerifiedLoginError } from '@/application/auth/is-email-not-verified-error';
 import { mapLoginResponse } from '@/application/auth/map-auth-response';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { LoginForm } from '../../components/login-form';
 import { ROUTES } from '../../../shared/config/routes';
+import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
 import { useAuth } from '../hooks/use-auth';
 import { useGoogleAuthSubmit } from '../hooks/use-google-auth-submit';
 import { AuthSplitLayout } from '../components/auth-split-layout';
@@ -47,20 +50,39 @@ export default function LoginPage() {
         setSubmitError('Respons server tidak berisi token. Hubungi admin.');
         return;
       }
+      const resolvedEmail = mapped.email || email;
       setSession({
         access: mapped.access,
         refresh: mapped.refresh,
-        email: mapped.email || email,
+        email: resolvedEmail,
         fullName: mapped.fullName,
+        onboardingCompleted: mapped.onboardingCompleted,
       });
-      const resolvedEmail = mapped.email || email;
-      const onboarded =
-        resolvedEmail &&
-        localStorage.getItem(
-          `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
-        ) === '1';
-      navigate(onboarded ? ROUTES.home : ROUTES.onboarding, { replace: true });
+      const isOnboarded =
+        typeof mapped.onboardingCompleted === 'boolean'
+          ? mapped.onboardingCompleted
+          : Boolean(
+              resolvedEmail &&
+                localStorage.getItem(
+                  `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
+                ) === '1',
+            );
+      const nextPath = isOnboarded ? ROUTES.home : ROUTES.onboarding;
+      toast.success('Berhasil masuk.', { duration: 4000 });
+      navigate(nextPath, { replace: true });
     } catch (err) {
+      if (isEmailNotVerifiedLoginError(err)) {
+        sessionStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, email);
+        toast.info(
+          'Email belum diverifikasi. Masukkan kode OTP atau kirim ulang kode.',
+          { duration: 4000 },
+        );
+        navigate(ROUTES.verifyEmail, {
+          replace: true,
+          state: { fromLogin: true, email },
+        });
+        return;
+      }
       setSubmitError(getAuthErrorMessage(err, 'Login gagal.'));
     } finally {
       setIsSubmitting(false);

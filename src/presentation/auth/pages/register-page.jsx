@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { SignupForm } from '../../components/signup-form';
 import { ROUTES } from '../../../shared/config/routes';
+import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
 import { useGoogleAuthSubmit } from '../hooks/use-google-auth-submit';
 import { AuthSplitLayout } from '../components/auth-split-layout';
-
-const PENDING_EMAIL_KEY = 'ngumpulyuk.pendingVerificationEmail';
 
 export default function RegisterPage() {
   const { signInWithGoogleCredential, googleError, isGoogleLoading } =
@@ -39,7 +39,11 @@ export default function RegisterPage() {
         password,
         password_confirm: confirmPassword,
       });
-      sessionStorage.setItem(PENDING_EMAIL_KEY, email);
+      sessionStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, email);
+      toast.success(
+        'Pendaftaran berhasil. Masukkan kode OTP yang dikirim ke email kamu.',
+        { duration: 4000 },
+      );
       navigate(ROUTES.verifyEmail, { replace: true });
     } catch (err) {
       setSubmitError(getAuthErrorMessage(err, 'Pendaftaran gagal.'));

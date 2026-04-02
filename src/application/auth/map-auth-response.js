@@ -1,27 +1,50 @@
 /**
+ * Normalizes login/register payloads: supports flat DRF responses and `{ data: { ... } }` wrappers.
  * @param {Record<string, unknown>} data
- * @returns {{ access: string | null; refresh: string | null; email: string; fullName: string }}
+ * @returns {{
+ *   access: string | null;
+ *   refresh: string | null;
+ *   email: string;
+ *   fullName: string;
+ *   onboardingCompleted: boolean | null;
+ * }}
  */
 export function mapLoginResponse(data) {
+  const root =
+    data &&
+    typeof data === 'object' &&
+    'data' in data &&
+    data.data &&
+    typeof data.data === 'object'
+      ? /** @type {Record<string, unknown>} */ (data.data)
+      : data;
+
   const access =
-    /** @type {string | undefined} */ (data.access) ??
-    /** @type {string | undefined} */ (data.token) ??
-    /** @type {string | undefined} */ (data.access_token) ??
+    /** @type {string | undefined} */ (root.access) ??
+    /** @type {string | undefined} */ (root.token) ??
+    /** @type {string | undefined} */ (root.access_token) ??
     null;
 
   const refresh =
-    /** @type {string | undefined} */ (data.refresh) ??
-    /** @type {string | undefined} */ (data.refresh_token) ??
+    /** @type {string | undefined} */ (root.refresh) ??
+    /** @type {string | undefined} */ (root.refresh_token) ??
     null;
 
   const userObj =
-    data.user && typeof data.user === 'object'
-      ? /** @type {Record<string, unknown>} */ (data.user)
+    root.user && typeof root.user === 'object'
+      ? /** @type {Record<string, unknown>} */ (root.user)
       : null;
 
-  const email = String(userObj?.email ?? data.email ?? '').trim();
+  const email = String(userObj?.email ?? root.email ?? '').trim();
 
-  const fullName = String(userObj?.full_name ?? data.full_name ?? '').trim();
+  const fullName = String(userObj?.full_name ?? root.full_name ?? '').trim();
 
-  return { access, refresh, email, fullName };
+  let onboardingCompleted = null;
+  if (typeof userObj?.onboarding_completed === 'boolean') {
+    onboardingCompleted = userObj.onboarding_completed;
+  } else if (typeof root.onboarding_completed === 'boolean') {
+    onboardingCompleted = root.onboarding_completed;
+  }
+
+  return { access, refresh, email, fullName, onboardingCompleted };
 }

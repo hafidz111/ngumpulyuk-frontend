@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+
+import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { usersApi } from '@/infrastructure/users/users-api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,6 +51,7 @@ import {
   ONBOARDING_ACTIVITIES,
 } from './onboarding-data';
 import { eventTimeIconMap, onboardingActivityIconMap } from './onboarding-icon-maps';
+import { mapOnboardingApiBody } from './map-onboarding-api-body';
 
 const TOTAL_STEPS = 4;
 
@@ -77,6 +82,7 @@ export default function OnboardingPage() {
   const [activityLevel, setActivityLevel] = useState('');
 
   const [stepError, setStepError] = useState('');
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const progressPercent = Math.round((step / TOTAL_STEPS) * 100);
 
@@ -122,7 +128,7 @@ export default function OnboardingPage() {
     setStep((s) => Math.max(1, s - 1));
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (step === 1) {
       if (!birthDate || !gender) {
         setStepError('Lengkapi tanggal lahir dan gender dulu, ya.');
@@ -155,8 +161,33 @@ export default function OnboardingPage() {
       setStep((s) => s + 1);
       return;
     }
-    completeOnboarding();
-    navigate(ROUTES.home, { replace: true });
+
+    if (!birthDate || !gender) {
+      setStepError('Data pribadi tidak lengkap.');
+      return;
+    }
+
+    setIsCompleting(true);
+    try {
+      const body = mapOnboardingApiBody({
+        birthDate,
+        gender,
+        selectedActivityIds,
+        customActivities,
+        locationAreaId,
+        timeSlotIds,
+      });
+      await usersApi.completeOnboarding(body);
+      completeOnboarding();
+      toast.success('Onboarding selesai. Selamat datang!', { duration: 4000 });
+      navigate(ROUTES.home, { replace: true });
+    } catch (err) {
+      const msg = getAuthErrorMessage(err, 'Gagal menyimpan data onboarding.');
+      setStepError(msg);
+      toast.error(msg, { duration: 4000 });
+    } finally {
+      setIsCompleting(false);
+    }
   }
 
   const containerClass =
@@ -524,7 +555,8 @@ export default function OnboardingPage() {
             {step === 1 ? (
               <Button
                 type='button'
-                onClick={handleNext}
+                disabled={isCompleting}
+                onClick={() => void handleNext()}
                 className='h-12 w-full rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
               >
                 Lanjut
@@ -535,6 +567,7 @@ export default function OnboardingPage() {
                 <Button
                   type='button'
                   variant='outline'
+                  disabled={isCompleting}
                   onClick={handleBack}
                   className='h-12 shrink-0 rounded-full border-border px-6 sm:w-auto'
                 >
@@ -543,10 +576,15 @@ export default function OnboardingPage() {
                 </Button>
                 <Button
                   type='button'
-                  onClick={handleNext}
+                  disabled={isCompleting}
+                  onClick={() => void handleNext()}
                   className='h-12 flex-1 rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
                 >
-                  {step === TOTAL_STEPS ? 'Mulai Ngumpul' : 'Lanjut'}
+                  {step === TOTAL_STEPS
+                    ? isCompleting
+                      ? 'Menyimpan…'
+                      : 'Mulai Ngumpul'
+                    : 'Lanjut'}
                   <ArrowRight className='size-4' />
                 </Button>
               </div>

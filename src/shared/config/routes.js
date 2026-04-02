@@ -2,6 +2,8 @@ export const ROUTES = {
   home: '/',
   login: '/login',
   register: '/register',
+  verifyEmail: '/verify-email',
+  forgotPassword: '/forgot-password',
   passwordResetConfirm: '/password-reset-confirm/:uidb64/:token',
   onboarding: '/onboarding',
   explore: '/explore',
