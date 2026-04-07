@@ -1,0 +1,446 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Edit3,
+  Loader2,
+  LogIn,
+  LogOut,
+  MapPin,
+  Share2,
+  Target,
+  Trash2,
+  Trophy,
+  Users,
+  Zap,
+} from 'lucide-react';
+
+import { cn } from '@/lib/utils';
+import { ROUTES } from '@/shared/config/routes';
+import { eventsApi } from '@/infrastructure/events/events-api';
+import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { useAuth } from '@/presentation/auth/hooks/use-auth';
+import { Button } from '@/presentation/components/ui/button';
+import { Badge } from '@/presentation/components/ui/badge';
+import { Card } from '@/presentation/components/ui/card';
+import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { formatTimeId, formatLocation, formatEventDateRange } from '@/shared/lib/formatters';
+
+const DIFFICULTY_LABEL = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
+
+const DIFFICULTY_COLORS = {
+  beginner: 'bg-emerald-100 text-emerald-700',
+  intermediate: 'bg-amber-100 text-amber-700',
+  advanced: 'bg-red-100 text-red-700',
+};
+
+export default function EventDetailPage() {
+  const { isAuthenticated, user } = useAuth();
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [event, setEvent] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState('');
+
+  const isOwner = event && user?.email && (
+    event.creator_email === user.email ||
+    event.creator?.email === user.email ||
+    event.user?.email === user.email ||
+    event.is_owner === true
+  );
+
+  const isJoined = participants.some(
+    (p) =>
+      p.email === user?.email ||
+      p.user?.email === user?.email ||
+      p.user_email === user?.email,
+  ) || event?.is_joined === true;
+
+  const participantCount = event?.participant_count ?? event?.participants_count ?? participants.length;
+  const maxP = event?.max_participants;
+  const isFull = maxP && participantCount >= maxP;
+
+  const loadEvent = useCallback(async () => {
+    try {
+      const res = await eventsApi.getById(id);
+      setEvent(res.data?.data ?? res.data);
+    } catch {
+      setError('Event tidak ditemukan.');
+    }
+  }, [id]);
+
+  const loadParticipants = useCallback(async () => {
+    try {
+      const res = await eventsApi.participants(id);
+      const data = res.data;
+      if (Array.isArray(data)) {
+        setParticipants(data);
+      } else if (data?.results) {
+        setParticipants(data.results);
+      } else if (data?.data) {
+        setParticipants(Array.isArray(data.data) ? data.data : data.data?.results ?? []);
+      }
+    } catch {
+      // silently ignore
+    }
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      await Promise.all([loadEvent(), loadParticipants()]);
+      if (!cancelled) setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [loadEvent, loadParticipants]);
+
+  if (!isAuthenticated) {
+    return <Navigate to={ROUTES.login} replace />;
+  }
+
+  async function handleJoin() {
+    setActionLoading('join');
+    try {
+      await eventsApi.join(id);
+      toast.success('Berhasil bergabung! 🎉');
+      await Promise.all([loadEvent(), loadParticipants()]);
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err, 'Gagal bergabung.'));
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleLeave() {
+    setActionLoading('leave');
+    try {
+      await eventsApi.leave(id);
+      toast.success('Kamu telah keluar dari event.');
+      await Promise.all([loadEvent(), loadParticipants()]);
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err, 'Gagal keluar dari event.'));
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Yakin ingin menghapus event ini?')) return;
+    setActionLoading('delete');
+    try {
+      await eventsApi.remove(id);
+      toast.success('Event berhasil dihapus.');
+      navigate(ROUTES.events, { replace: true });
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err, 'Gagal menghapus event.'));
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  function handleShare() {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: event?.title, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success('Link disalin ke clipboard!');
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className='min-h-svh bg-surface text-foreground'>
+        <HomeAppHeader />
+        <div className='flex items-center justify-center py-32'>
+          <Loader2 className='size-8 animate-spin text-primary-container' />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <div className='min-h-svh bg-surface text-foreground'>
+        <HomeAppHeader />
+        <div className='flex flex-col items-center justify-center gap-4 py-32 text-center'>
+          <Zap className='size-12 text-muted-foreground/30' />
+          <h2 className='font-display text-xl font-bold'>{error || 'Event tidak ditemukan'}</h2>
+          <Button asChild variant='outline' className='rounded-full'>
+            <Link to={ROUTES.events}>
+              <ArrowLeft className='size-4' />
+              Kembali
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const diffClass = DIFFICULTY_COLORS[event.difficulty_level] || DIFFICULTY_COLORS.beginner;
+
+  const dateDisplay = formatEventDateRange(event.event_date, event.end_date);
+  const formattedTime = formatTimeId(event.event_time);
+
+  let timeDisplay = formattedTime;
+  if (event.end_time && event.end_time !== event.event_time) {
+    timeDisplay += ` - ${formatTimeId(event.end_time)}`;
+  }
+
+  const locationDisplay = formatLocation(event.location_address, event.location_area);
+
+  return (
+    <div className='min-h-svh bg-surface text-foreground'>
+      <HomeAppHeader />
+
+      <main className='mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-10'>
+        {/* Back button */}
+        <Button asChild variant='ghost' size='sm' className='mb-4 -ml-2 rounded-full'>
+          <Link to={ROUTES.events}>
+            <ArrowLeft className='size-4' />
+            Kembali ke Events
+          </Link>
+        </Button>
+
+        {/* Cover Image */}
+        <div className='relative mb-6 h-56 overflow-hidden rounded-3xl bg-gradient-to-br from-primary-container/20 to-secondary/20 shadow-sm md:h-72'>
+          {event.cover_image ? (
+            <img
+              src={event.cover_image}
+              alt={event.title}
+              className='h-full w-full object-cover'
+            />
+          ) : (
+            <div className='flex h-full items-center justify-center'>
+              <Zap className='size-16 text-primary-container/20' />
+            </div>
+          )}
+          {/* Overlays */}
+          <div className='absolute inset-0 bg-gradient-to-t from-black/30 to-transparent' />
+          <div className='absolute bottom-4 left-4 flex flex-wrap gap-2'>
+            <Badge className='bg-white/90 text-foreground shadow-sm backdrop-blur-sm text-xs uppercase'>
+              {event.category}
+            </Badge>
+            {event.is_competition ? (
+              <span className='inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-3 py-1 text-xs font-bold uppercase text-amber-900 shadow backdrop-blur-sm'>
+                <Trophy className='size-3' />
+                Kompetisi
+              </span>
+            ) : null}
+            <span className={cn('rounded-full px-3 py-1 text-xs font-bold uppercase', diffClass)}>
+              {DIFFICULTY_LABEL[event.difficulty_level] || event.difficulty_level}
+            </span>
+          </div>
+          {/* Share */}
+          <button
+            type='button'
+            onClick={handleShare}
+            className='absolute right-4 top-4 rounded-full bg-white/80 p-2.5 shadow backdrop-blur-sm transition hover:bg-white'
+          >
+            <Share2 className='size-4 text-foreground' />
+          </button>
+        </div>
+
+        <div className='grid grid-cols-1 gap-6 lg:grid-cols-3'>
+          {/* Main Info */}
+          <div className='space-y-6 lg:col-span-2'>
+            <div>
+              <h1 className='font-display text-2xl font-bold text-foreground md:text-3xl'>
+                {event.title}
+              </h1>
+              {event.status && event.status !== 'upcoming' ? (
+                <span className='mt-2 inline-block rounded-full bg-muted px-3 py-1 text-xs font-bold uppercase text-muted-foreground'>
+                  {event.status === 'ongoing'
+                    ? 'Berlangsung'
+                    : event.status === 'completed'
+                      ? 'Selesai'
+                      : event.status === 'cancelled'
+                        ? 'Dibatalkan'
+                        : event.status}
+                </span>
+              ) : null}
+            </div>
+
+            {/* Info grid */}
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+              <InfoItem icon={Calendar} label='Tanggal' value={dateDisplay} />
+              <InfoItem icon={Clock} label='Waktu' value={timeDisplay} />
+              <InfoItem icon={MapPin} label='Lokasi' value={locationDisplay} />
+              <InfoItem icon={Users} label='Peserta' value={`${participantCount}/${maxP ?? '∞'}`} />
+              <InfoItem icon={Target} label='Level' value={DIFFICULTY_LABEL[event.difficulty_level] || event.difficulty_level} />
+              {event.is_competition ? (
+                <InfoItem icon={Trophy} label='Tipe' value='Kompetisi' />
+              ) : null}
+            </div>
+
+            {/* Description */}
+            <Card className='border-0 bg-card rounded-2xl shadow-sm'>
+              <div className='p-5 md:p-6'>
+                <h3 className='mb-3 font-display text-sm font-bold text-foreground'>
+                  Tentang Event
+                </h3>
+                <p className='whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground'>
+                  {event.description}
+                </p>
+              </div>
+            </Card>
+
+            {/* Tags */}
+            {event.tags?.length > 0 ? (
+              <div className='flex flex-wrap gap-2'>
+                {event.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className='rounded-full border border-primary-container/30 bg-primary-container/10 px-3 py-1 text-xs font-medium text-foreground'
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Map preview */}
+            {event.latitude && event.longitude ? (
+              <Card className='border-0 bg-card rounded-2xl shadow-sm overflow-hidden'>
+                <iframe
+                  title='Lokasi event'
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(event.longitude) - 0.005},${Number(event.latitude) - 0.003},${Number(event.longitude) + 0.005},${Number(event.latitude) + 0.003}&layer=mapnik&marker=${event.latitude},${event.longitude}`}
+                  className='h-52 w-full border-0 md:h-64'
+                  loading='lazy'
+                />
+              </Card>
+            ) : null}
+          </div>
+
+          {/* Sidebar */}
+          <div className='space-y-4'>
+            {/* Action buttons */}
+            <Card className='border-0 bg-card rounded-2xl shadow-sm'>
+              <div className='space-y-3 p-5'>
+                {isOwner ? (
+                  <>
+                    <Button
+                      asChild
+                      className='h-11 w-full rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+                    >
+                      <Link to={`/events/${id}/edit`}>
+                        <Edit3 className='size-4' />
+                        Edit Event
+                      </Link>
+                    </Button>
+                    <Button
+                      variant='outline'
+                      disabled={actionLoading === 'delete'}
+                      onClick={handleDelete}
+                      className='h-11 w-full rounded-full border-red-300 text-red-600 hover:bg-red-50'
+                    >
+                      {actionLoading === 'delete' ? (
+                        <Loader2 className='size-4 animate-spin' />
+                      ) : (
+                        <Trash2 className='size-4' />
+                      )}
+                      Hapus Event
+                    </Button>
+                  </>
+                ) : isJoined ? (
+                  <Button
+                    variant='outline'
+                    disabled={!!actionLoading}
+                    onClick={handleLeave}
+                    className='h-11 w-full rounded-full border-red-300 text-red-600 hover:bg-red-50'
+                  >
+                    {actionLoading === 'leave' ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <LogOut className='size-4' />
+                    )}
+                    Batalkan Partisipasi
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={isFull || !!actionLoading}
+                    onClick={handleJoin}
+                    className='h-11 w-full rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+                  >
+                    {actionLoading === 'join' ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <LogIn className='size-4' />
+                    )}
+                    {isFull ? 'Event Penuh' : 'Gabung Event'}
+                  </Button>
+                )}
+              </div>
+            </Card>
+
+            {/* Participants */}
+            <Card className='border-0 bg-card rounded-2xl shadow-sm'>
+              <div className='p-5'>
+                <h3 className='mb-3 flex items-center gap-2 font-display text-sm font-bold text-foreground'>
+                  <Users className='size-4 text-primary-container' />
+                  Peserta ({participantCount})
+                </h3>
+                {participants.length > 0 ? (
+                  <ul className='space-y-2.5'>
+                    {participants.map((p, idx) => {
+                      const name =
+                        p.full_name ||
+                        p.user?.full_name ||
+                        p.display_name ||
+                        p.email ||
+                        p.user?.email ||
+                        `Peserta ${idx + 1}`;
+                      return (
+                        <li key={p.id ?? idx} className='flex items-center gap-3'>
+                          <span className='flex size-8 items-center justify-center rounded-full bg-primary-container/15 text-xs font-bold text-primary-container'>
+                            {name.charAt(0).toUpperCase()}
+                          </span>
+                          <span className='text-sm text-foreground truncate'>
+                            {name}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className='text-sm text-muted-foreground'>
+                    Belum ada peserta. Jadilah yang pertama!
+                  </p>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function InfoItem({ icon: Icon, label, value }) {
+  if (!value) return null;
+  return (
+    <div className='flex items-start gap-3 rounded-xl bg-card p-3 shadow-sm border border-border/40'>
+      <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-container/15 text-primary-container'>
+        <Icon className='size-4' />
+      </span>
+      <div className='min-w-0'>
+        <p className='text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground'>
+          {label}
+        </p>
+        <p className='text-sm font-semibold text-foreground truncate'>{value}</p>
+      </div>
+    </div>
+  );
+}

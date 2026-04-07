@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { displayNameFromEmail } from '@/shared/lib/user-display-name';
 import { authApi } from '@/infrastructure/auth/auth-api';
@@ -56,6 +56,19 @@ function buildUserState({ email, fullName, onboardingCompleted }) {
     displayName,
     isOnboarded,
   };
+}
+
+function getTokenExpDate(token) {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(
+      atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+    );
+    if (payload.exp) return payload.exp * 1000;
+  } catch {
+    // Abaikan jika token tidak valid atau error decoding
+  }
+  return null;
 }
 
 export function AuthProvider({ children }) {

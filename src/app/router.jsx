@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 
 import { ROUTES } from '../shared/config/routes';
 
@@ -23,6 +23,27 @@ const ResetPasswordPage = lazy(
 );
 const OnboardingPage = lazy(
   () => import('../presentation/onboarding/onboarding-page.jsx'),
+);
+const EventsListPage = lazy(
+  () => import('../presentation/events/pages/events-list-page.jsx'),
+);
+const EventCreatePage = lazy(
+  () => import('../presentation/events/pages/event-create-page.jsx'),
+);
+const EventDetailPage = lazy(
+  () => import('../presentation/events/pages/event-detail-page.jsx'),
+);
+const EventEditPage = lazy(
+  () => import('../presentation/events/pages/event-edit-page.jsx'),
+);
+const CommunityPage = lazy(
+  () => import('../presentation/community/pages/community-page.jsx'),
+);
+const CommunityCreatePage = lazy(
+  () => import('../presentation/community/pages/community-create-page.jsx'),
+);
+const CommunityDetailPage = lazy(
+  () => import('../presentation/community/pages/community-detail-page.jsx'),
 );
 const ComingSoonPage = lazy(
   () => import('../presentation/coming-soon/coming-soon-page.jsx'),
@@ -75,13 +96,39 @@ const router = createBrowserRouter([
     path: ROUTES.onboarding,
     element: suspense(<OnboardingPage />),
   },
+  // Explore redirects to Events
   {
     path: ROUTES.explore,
-    element: suspense(<ComingSoonPage />),
+    element: <Navigate to={ROUTES.events} replace />,
+  },
+  // Events
+  {
+    path: ROUTES.events,
+    element: suspense(<EventsListPage />),
+  },
+  {
+    path: ROUTES.eventCreate,
+    element: suspense(<EventCreatePage />),
+  },
+  {
+    path: ROUTES.eventEdit,
+    element: suspense(<EventEditPage />),
+  },
+  {
+    path: ROUTES.eventDetail,
+    element: suspense(<EventDetailPage />),
   },
   {
     path: ROUTES.community,
-    element: suspense(<ComingSoonPage />),
+    element: suspense(<CommunityPage />),
+  },
+  {
+    path: ROUTES.communityCreate,
+    element: suspense(<CommunityCreatePage />),
+  },
+  {
+    path: ROUTES.communityDetail,
+    element: suspense(<CommunityDetailPage />),
   },
   {
     path: ROUTES.map,

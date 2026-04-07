@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom';
 import { CalendarPlus, Hand, Plus } from 'lucide-react';
 
+import { ROUTES } from '@/shared/config/routes';
 import { Button } from '@/presentation/components/ui/button';
 
 export function HomeWelcomeSection({ displayName }) {
@@ -16,19 +18,23 @@ export function HomeWelcomeSection({ displayName }) {
       </div>
       <div className='flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center'>
         <Button
-          type='button'
+          asChild
           className='h-11 rounded-full bg-primary-container px-5 font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
         >
-          <CalendarPlus className='size-4' />
-          Join Event
+          <Link to={ROUTES.events}>
+            <CalendarPlus className='size-4' />
+            Join Event
+          </Link>
         </Button>
         <Button
-          type='button'
+          asChild
           variant='outline'
           className='h-11 rounded-full border-border px-5 font-semibold'
         >
-          <Plus className='size-4' />
-          Create Event
+          <Link to={ROUTES.eventCreate}>
+            <Plus className='size-4' />
+            Create Event
+          </Link>
         </Button>
       </div>
     </section>

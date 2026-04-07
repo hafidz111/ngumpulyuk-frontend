@@ -4,6 +4,8 @@ import { API_BASE_URL } from '@/shared/config/env';
 import {
   clearAllAuthStorage,
   getAccessToken,
+  getRefreshToken,
+  setAccessToken,
 } from '@/infrastructure/http/token-storage';
 
 export const apiClient = axios.create({
@@ -23,25 +25,101 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
     const status = error.response?.status;
-    const hadAuth = Boolean(error.config?.headers?.Authorization);
-    const url = String(error.config?.url ?? '');
+    const url = String(originalRequest.url ?? '');
     const isLogoutRequest = url.includes('/auth/logout');
-    if (status === 401 && hadAuth && !isLogoutRequest) {
+    const isRefreshRequest = url.includes('/auth/refresh');
+
+    if (status >= 500) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/error/')) {
+        window.location.assign(`/error/${status}`);
+      }
+      return Promise.reject(error);
+    }
+
+    if (status === 401 && isRefreshRequest) {
       clearAllAuthStorage();
-      const loginPath = '/login';
-      if (
-        typeof window !== 'undefined' &&
-        !window.location.pathname.startsWith(loginPath)
-      ) {
-        window.location.assign(
-          `${window.location.origin}${loginPath}?session=expired`,
-        );
+      forceLoginRedirect();
+      return Promise.reject(error);
+    }
+
+    if (status === 401 && !originalRequest._retry && !isLogoutRequest) {
+      const refreshToken = getRefreshToken();
+
+      if (!refreshToken) {
+        clearAllAuthStorage();
+        forceLoginRedirect();
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const { data } = await axios.post(`${API_BASE_URL}/v1/auth/refresh/`, {
+          refresh: refreshToken,
+        });
+
+        const newAccess = data.access || data.access_token || data.token;
+        if (newAccess) {
+          setAccessToken(newAccess);
+          apiClient.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
+          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+          processQueue(null, newAccess);
+          return apiClient(originalRequest);
+        } else {
+          throw new Error('No access token returned');
+        }
+      } catch (err) {
+        processQueue(err, null);
+        clearAllAuthStorage();
+        forceLoginRedirect();
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   },
 );
+
+function forceLoginRedirect() {
+  const loginPath = '/login';
+  if (
+    typeof window !== 'undefined' &&
+    !window.location.pathname.startsWith(loginPath)
+  ) {
+    window.location.assign(`${window.location.origin}${loginPath}?session=expired`);
+  }
+}
+

@@ -45,6 +45,13 @@ export const authApi = {
   },
 
   /**
+   * @param {{ refresh: string }} body
+   */
+  refresh(body) {
+    return apiClient.post('/v1/auth/refresh/', body);
+  },
+
+  /**
    * @param {Record<string, unknown>} body
    */
   google(body) {
