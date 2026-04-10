@@ -1,26 +1,28 @@
 import { AREA_OPTIONS } from '../onboarding/onboarding-data';
 
-export const EVENT_CATEGORIES = [
-  { id: 'running', label: 'Running' },
-  { id: 'padel', label: 'Padel' },
-  { id: 'cycling', label: 'Cycling' },
-  { id: 'yoga', label: 'Yoga' },
-  { id: 'basketball', label: 'Basketball' },
-  { id: 'pokemon', label: 'Pokémon TCG' },
-  { id: 'boardgames', label: 'Board Games' },
-  { id: 'hiking', label: 'Hiking' },
-  { id: 'swimming', label: 'Swimming' },
-  { id: 'badminton', label: 'Badminton' },
-  { id: 'photography', label: 'Photography' },
-  { id: 'cooking', label: 'Cooking' },
-  { id: 'futsal', label: 'Futsal' },
-  { id: 'tennis', label: 'Tennis' },
-  { id: 'gym', label: 'Gym / Fitness' },
-  { id: 'other', label: 'Lainnya' },
-];
+
 
 /** @type {{ id: string; label: string }[]} */
 export { AREA_OPTIONS };
+
+/**
+ * Build unique category options from event list payload.
+ * @param {Array<Record<string, unknown>>} events
+ */
+export function extractEventCategories(events = []) {
+  const seen = new Map();
+
+  events.forEach((event) => {
+    const raw = typeof event?.category === 'string' ? event.category.trim() : '';
+    if (!raw) return;
+    const key = raw.toLowerCase();
+    if (!seen.has(key)) seen.set(key, raw);
+  });
+
+  return Array.from(seen.values())
+    .sort((a, b) => a.localeCompare(b))
+    .map((label) => ({ id: label, label }));
+}
 
 export const DIFFICULTY_LEVELS = [
   { id: 'beginner', label: 'Beginner' },
@@ -37,8 +39,8 @@ export const EVENT_STATUS_OPTIONS = [
 ];
 
 export const SORT_OPTIONS = [
-  { id: 'date_asc', label: 'Tanggal (Terdekat)' },
-  { id: 'date_desc', label: 'Tanggal (Terjauh)' },
+  { id: 'date_asc', label: 'Tanggal terdekat' },
+  { id: 'date_desc', label: 'Tanggal terjauh' },
   { id: 'newest', label: 'Terbaru' },
   { id: 'popular', label: 'Populer' },
 ];

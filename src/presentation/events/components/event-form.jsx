@@ -43,7 +43,7 @@ import { getAuthErrorMessage } from '@/application/auth/auth-error';
 
 import { eventsApi } from '@/infrastructure/events/events-api';
 
-import { EVENT_CATEGORIES, AREA_OPTIONS, DIFFICULTY_LEVELS } from '../event-data';
+import { AREA_OPTIONS, DIFFICULTY_LEVELS, extractEventCategories } from '../event-data';
 import { MapPicker } from './map-picker';
 
 function toTitleCase(str) {
@@ -140,7 +140,20 @@ export function EventForm({
   useEffect(() => {
     let active = true;
     if (!category.trim()) {
-      setCategories(EVENT_CATEGORIES);
+      const loadInitialCategories = async () => {
+        try {
+          const res = await eventsApi.list({ limit: 200, offset: 0 });
+          const payload = res.data?.data || res.data;
+          let events = [];
+          if (Array.isArray(payload)) events = payload;
+          else if (payload?.events) events = payload.events;
+          else if (payload?.results) events = payload.results;
+          if (active) setCategories(extractEventCategories(events));
+        } catch {
+          if (active) setCategories([]);
+        }
+      };
+      loadInitialCategories();
       return;
     }
 

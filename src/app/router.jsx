@@ -48,6 +48,9 @@ const CommunityDetailPage = lazy(
 const ComingSoonPage = lazy(
   () => import('../presentation/coming-soon/coming-soon-page.jsx'),
 );
+const EventMapPage = lazy(
+  () => import('../presentation/map/event-map-page.jsx'),
+);
 const NotFoundPage = lazy(
   () => import('../presentation/error-pages/not-found-page.jsx'),
 );
@@ -132,7 +135,7 @@ const router = createBrowserRouter([
   },
   {
     path: ROUTES.map,
-    element: suspense(<ComingSoonPage />),
+    element: suspense(<EventMapPage />),
   },
   {
     path: ROUTES.profile,

@@ -16,7 +16,7 @@ import { useAuth } from '@/presentation/auth/hooks/use-auth';
 
 const navItems = [
   { to: ROUTES.home, label: 'Home', icon: Home, end: true },
-  { to: ROUTES.explore, label: 'Explore', icon: Compass, end: false },
+  { to: ROUTES.events, label: 'Explore', icon: Compass, end: false },
   { to: ROUTES.community, label: 'Community', icon: Users, end: false },
   { to: ROUTES.map, label: 'Map', icon: Map, end: false },
   { to: ROUTES.profile, label: 'Profile', icon: User, end: false },
@@ -43,14 +43,14 @@ export function HomeAppHeader() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                  'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors',
                   isActive
-                    ? 'bg-primary-container text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    ? 'bg-[#FF8000] text-white'
+                    : 'text-muted-foreground hover:bg-[#FFF1E5] hover:text-[#FF8000]',
                 )
               }
             >
-              <NavIcon className='size-4 opacity-90' aria-hidden />
+              <NavIcon className='size-5' aria-hidden />
               {label}
             </NavLink>
           ))}
@@ -94,14 +94,14 @@ export function HomeAppHeader() {
             end={end}
             className={({ isActive }) =>
               cn(
-                'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium',
+                'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
                 isActive
-                  ? 'bg-primary-container text-primary-foreground'
-                  : 'bg-muted/50 text-muted-foreground',
+                  ? 'bg-[#FF8000] text-white'
+                  : 'bg-transparent text-muted-foreground hover:bg-[#FFF1E5] hover:text-[#FF8000]',
               )
             }
           >
-            <NavIcon className='size-3.5' aria-hidden />
+            <NavIcon className='size-4' aria-hidden />
             {label}
           </NavLink>
         ))}

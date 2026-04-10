@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import {
   Filter,
@@ -26,10 +26,8 @@ import {
 import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
 import { EventCard } from '../components/event-card';
 import {
-  EVENT_CATEGORIES,
-  EVENT_STATUS_OPTIONS,
   SORT_OPTIONS,
-  AREA_OPTIONS,
+  extractEventCategories,
 } from '../event-data';
 
 const LIMIT = 12;
@@ -38,14 +36,13 @@ export default function EventsListPage() {
   const { isAuthenticated } = useAuth();
 
   const [events, setEvents] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [offset, setOffset] = useState(0);
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [location, setLocation] = useState('');
-  const [status, setStatus] = useState('');
   const [sort, setSort] = useState('date_asc');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -53,46 +50,70 @@ export default function EventsListPage() {
     async (newOffset = 0) => {
       setLoading(true);
       try {
-        const params = { limit: LIMIT, offset: newOffset, sort };
-        if (search.trim()) params.search = search.trim();
-        if (category) params.category = category;
-        if (location) params.location = location;
-        if (status) params.status = status;
+        const params = {
+          limit: LIMIT,
+          offset: newOffset,
+        };
+
+        if (search.trim()) params.search = search;
+        if (category && category !== ' ') params.category = category;
+        if (sort) params.sort = sort;
 
         const res = await eventsApi.list(params);
-        const data = res.data;
+        const payload = res.data?.data || res.data;
 
-        if (Array.isArray(data)) {
-          setEvents(data);
-          setTotalCount(data.length);
-        } else if (data?.results) {
-          setEvents(data.results);
-          setTotalCount(data.count ?? data.results.length);
-        } else if (data?.data) {
-          const inner = data.data;
-          if (Array.isArray(inner)) {
-            setEvents(inner);
-            setTotalCount(data.count ?? inner.length);
-          } else if (inner?.results || inner?.events) {
-            const arr = inner.results || inner.events;
-            setEvents(arr);
-            setTotalCount(inner.count ?? inner.total ?? arr.length);
-          }
+        let evs = [];
+        let totalCountNum = 0;
+
+        if (Array.isArray(payload)) {
+          evs = payload;
+          totalCountNum = evs.length;
+        } else if (payload?.events) {
+          evs = payload.events;
+          totalCountNum = payload.total ?? payload.count ?? evs.length;
+        } else if (payload?.results) {
+          evs = payload.results;
+          totalCountNum = payload.count ?? payload.total ?? evs.length;
         }
 
+        setEvents(evs);
+        setTotalCount(totalCountNum);
         setOffset(newOffset);
-      } catch {
+      } catch (err) {
+        console.error(err);
         setEvents([]);
       } finally {
         setLoading(false);
       }
     },
-    [search, category, location, status, sort],
+    [search, category, sort],
   );
 
   useEffect(() => {
     fetchEvents(0);
   }, [fetchEvents]);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchCategories = async () => {
+      try {
+        const res = await eventsApi.list({ limit: 200, offset: 0 });
+        const payload = res.data?.data || res.data;
+        const items = Array.isArray(payload)
+          ? payload
+          : (payload?.events || payload?.results || []);
+        if (active) setCategoryOptions(extractEventCategories(items));
+      } catch {
+        if (active) setCategoryOptions([]);
+      }
+    };
+
+    fetchCategories();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -102,14 +123,13 @@ export default function EventsListPage() {
   function clearFilters() {
     setSearch('');
     setCategory('');
-    setLocation('');
-    setStatus('');
     setSort('date_asc');
   }
 
-  const hasActiveFilters = category || location || status || search;
+  const hasActiveFilters = category || search;
   const hasMore = offset + LIMIT < totalCount;
   const hasPrev = offset > 0;
+  const eventCategories = useMemo(() => categoryOptions, [categoryOptions]);
 
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.login} replace />;
@@ -120,14 +140,13 @@ export default function EventsListPage() {
       <HomeAppHeader />
 
       <main className='mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10'>
-        {/* Header */}
-        <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end'>
           <div>
-            <h1 className='font-display text-2xl font-bold text-foreground md:text-3xl'>
+            <h1 className='font-display text-4xl font-black tracking-tight text-foreground md:text-5xl'>
               Explore Events
             </h1>
             <p className='mt-1 text-sm text-muted-foreground'>
-              Temukan event seru di sekitarmu
+              Temukan {totalCount} event seru di sekitarmu.
             </p>
           </div>
           <Button asChild className='h-11 rounded-full bg-primary-container px-6 font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'>
@@ -138,119 +157,93 @@ export default function EventsListPage() {
           </Button>
         </div>
 
-        {/* Search bar */}
-        <form onSubmit={handleSearch} className='mb-6'>
-          <div className='flex gap-2'>
-            <div className='relative flex-1'>
-              <Search className='absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder='Cari event...'
-                className='h-12 rounded-full bg-card pl-11 shadow-sm border-border/60'
-              />
+        <div className='relative z-20 mb-6'>
+          <form onSubmit={handleSearch}>
+            <div className='flex gap-2'>
+              <div className='relative flex-1'>
+                <Search className='absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder='Cari event...'
+                  className='h-12 rounded-full bg-white pl-11 shadow-sm border-border/60 text-foreground'
+                />
+              </div>
+              <Button
+                type='button'
+                onClick={() => setFiltersOpen((o) => !o)}
+                className={cn(
+                  'h-12 shrink-0 rounded-full border border-border/60 px-5 font-semibold shadow-sm transition-colors',
+                  filtersOpen ? 'bg-[#FF8000] text-white hover:bg-[#E67300]' : 'bg-white text-foreground hover:bg-muted'
+                )}
+              >
+                <Filter className='size-4' />
+                <span className='hidden sm:inline'>Filter</span>
+                {hasActiveFilters ? (
+                  <span className={cn('ml-1 flex size-5 items-center justify-center rounded-full text-[0.6rem] font-bold', filtersOpen ? 'bg-white text-[#FF8000]' : 'bg-[#FF8000] text-white')}>
+                    !
+                  </span>
+                ) : null}
+              </Button>
             </div>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => setFiltersOpen((o) => !o)}
-              className={cn(
-                'h-12 shrink-0 rounded-full px-4 border-border/60',
-                filtersOpen && 'bg-primary-container/10 border-primary-container',
-              )}
-            >
-              <SlidersHorizontal className='size-4' />
-              <span className='hidden sm:inline'>Filter</span>
-              {hasActiveFilters ? (
-                <span className='ml-1 flex size-5 items-center justify-center rounded-full bg-primary-container text-[0.6rem] font-bold text-primary-foreground'>
-                  !
-                </span>
-              ) : null}
-            </Button>
-          </div>
-        </form>
+          </form>
 
-        {/* Filter panel */}
-        {filtersOpen ? (
-          <div className='mb-6 rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-6'>
-            <div className='mb-3 flex items-center justify-between'>
-              <h3 className='flex items-center gap-2 text-sm font-bold text-foreground'>
-                <Filter className='size-4 text-primary-container' />
-                Filter Event
-              </h3>
-              {hasActiveFilters ? (
-                <button
-                  type='button'
-                  onClick={clearFilters}
-                  className='inline-flex items-center gap-1 text-xs font-medium text-primary-container hover:underline'
-                >
-                  <X className='size-3' />
-                  Reset
-                </button>
-              ) : null}
+          {filtersOpen ? (
+            <div className='absolute right-0 top-[56px] w-[300px] rounded-3xl border border-border/60 bg-white p-5 shadow-xl md:w-[320px]'>
+              <div className='grid grid-cols-1 gap-5'>
+                <div className='space-y-1.5'>
+                  <label className='text-base font-bold text-[#1A1A1A]'>Kategori</label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className='h-12 rounded-2xl border-border bg-white text-sm'>
+                      <SelectValue placeholder='Semua' />
+                    </SelectTrigger>
+                    <SelectContent className='z-[9999]'>
+                      <SelectItem value=' '>Semua</SelectItem>
+                      {eventCategories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className='space-y-1.5'>
+                  <label className='text-base font-bold text-[#1A1A1A]'>Urutan</label>
+                  <Select value={sort} onValueChange={setSort}>
+                    <SelectTrigger className='h-12 rounded-2xl border-border bg-white text-sm'>
+                      <SelectValue placeholder='Tanggal terdekat' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SORT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {hasActiveFilters && (
+                  <div className='mt-2 text-center'>
+                    <button
+                      type='button'
+                      onClick={clearFilters}
+                      className='text-[15px] font-semibold text-[#FF8000] hover:text-[#E67300] hover:underline'
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className='h-10 rounded-xl border-border bg-muted/40 text-sm'>
-                  <SelectValue placeholder='Kategori' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value=' '>Semua Kategori</SelectItem>
-                  {EVENT_CATEGORIES.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={location} onValueChange={setLocation}>
-                <SelectTrigger className='h-10 rounded-xl border-border bg-muted/40 text-sm'>
-                  <SelectValue placeholder='Lokasi' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value=' '>Semua Lokasi</SelectItem>
-                  {AREA_OPTIONS.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className='h-10 rounded-xl border-border bg-muted/40 text-sm'>
-                  <SelectValue placeholder='Status' />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVENT_STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s.id || '_all'} value={s.id || ' '}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className='h-10 rounded-xl border-border bg-muted/40 text-sm'>
-                  <SelectValue placeholder='Urutkan' />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {/* Event Grid */}
         {loading ? (
           <div className='flex items-center justify-center py-24'>
-            <Loader2 className='size-8 animate-spin text-primary-container' />
+            <Loader2 className='size-8 animate-spin text-[#FF8000]' />
           </div>
         ) : events.length === 0 ? (
           <div className='flex flex-col items-center justify-center gap-4 py-24 text-center'>
@@ -279,8 +272,8 @@ export default function EventsListPage() {
         ) : (
           <>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-              {events.map((ev) => (
-                <EventCard key={ev.id} event={ev} />
+              {events.map((ev, idx) => (
+                <EventCard key={ev.id} event={ev} idx={idx} />
               ))}
             </div>
 

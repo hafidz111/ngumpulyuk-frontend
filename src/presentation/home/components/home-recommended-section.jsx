@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Loader2, MapPin, Sparkles, Users, Zap } from 'lucide-react';
+import { Calendar, Clock, Loader2, MapPin, Sparkles, Users, Zap } from 'lucide-react';
 
-import { Badge } from '@/presentation/components/ui/badge';
 import { Card, CardContent } from '@/presentation/components/ui/card';
-import { Progress } from '@/presentation/components/ui/progress';
 
 import { ROUTES } from '@/shared/config/routes';
 import { cn } from '@/lib/utils';
 import { eventsApi } from '@/infrastructure/events/events-api';
-import { formatTimeId, formatLocation, formatEventDateRange } from '@/shared/lib/formatters';
+import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 
 export function HomeRecommendedSection() {
   const [events, setEvents] = useState([]);
@@ -43,20 +41,14 @@ export function HomeRecommendedSection() {
     <section className='space-y-4'>
       <div className='flex items-center justify-between gap-4'>
         <h2 className='font-display flex items-center gap-2 text-xl font-bold text-foreground md:text-2xl'>
-          <Sparkles className='size-6 shrink-0 text-primary-container md:size-7' strokeWidth={2} aria-hidden />
+          <Sparkles className='size-6 shrink-0 text-[#FF8000] md:size-7' strokeWidth={2} aria-hidden />
           Recommended for You
         </h2>
-        <Link
-          to={ROUTES.events}
-          className='text-sm font-semibold text-primary-container hover:underline'
-        >
-          Lihat Semua <span aria-hidden>&gt;</span>
-        </Link>
       </div>
 
       {loading ? (
         <div className='flex items-center justify-center py-12'>
-          <Loader2 className='size-6 animate-spin text-primary-container' />
+          <Loader2 className='size-6 animate-spin text-[#FF8000]' />
         </div>
       ) : events.length === 0 ? (
         <div className='flex flex-col items-center justify-center gap-3 rounded-2xl bg-card py-12 text-center'>
@@ -64,66 +56,119 @@ export function HomeRecommendedSection() {
           <p className='text-sm text-muted-foreground'>Belum ada event rekomendasi</p>
         </div>
       ) : (
-        <div className='grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
-          {events.map((event) => {
+        <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 pt-2 xs:gap-6 md:gap-8'>
+          {events.map((event, idx) => {
             const current = event.participant_count ?? event.participants_count ?? event.current_participants ?? 0;
-            const max = event.max_participants ?? 1;
-            const pct = Math.min(100, Math.round((current / max) * 100));
+            const max = event.max_participants ?? '∞';
+            const maxNum = max === '∞' ? 1 : max;
+            const pct = max === '∞' ? 0 : Math.min(100, Math.round((current / maxNum) * 100));
+
+            const pastelPalettes = [
+              { bg: 'bg-[#FFB3BA]', text: 'text-[#9A1F2A]' }, // pastel pink
+              { bg: 'bg-[#FFDFBA]', text: 'text-[#9A4A0F]' }, // pastel orange
+              { bg: 'bg-[#FFFFBA]', text: 'text-[#9A9A0F]' }, // pastel yellow
+              { bg: 'bg-[#BAFFC9]', text: 'text-[#0F9A2A]' }, // pastel green
+              { bg: 'bg-[#BAE1FF]', text: 'text-[#0F4A9A]' }, // pastel blue
+              { bg: 'bg-[#E8BAFF]', text: 'text-[#4A0F9A]' }, // pastel purple
+            ];
+            const palette = pastelPalettes[idx % pastelPalettes.length];
+            const progressColor = palette.bg;
+
             return (
-              <Link key={event.id} to={`/events/${event.id}`} className='block'>
-                <Card className='overflow-hidden border border-border/80 bg-card shadow-sm transition-shadow hover:shadow-md'>
-                  <div className='relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-primary-container/20 to-secondary/20'>
-                    {event.cover_image ? (
-                      <img
-                        src={event.cover_image}
-                        alt=''
-                        className='h-full w-full object-cover'
-                      />
-                    ) : (
-                      <div className='flex h-full items-center justify-center'>
-                        <Zap className='size-8 text-primary-container/25' />
-                      </div>
-                    )}
-                    <Badge
-                      variant='muted'
-                      className='absolute left-3 top-3 rounded-full bg-background/90 px-3 py-1 text-[0.65rem] font-semibold normal-case text-foreground shadow-sm'
-                    >
-                      {event.category}
-                    </Badge>
-                  </div>
-                  <CardContent className='space-y-3 p-4'>
-                    <h3 className='font-display text-base font-bold leading-snug text-foreground line-clamp-2'>
-                      {event.title}
-                    </h3>
-                    <div className='space-y-1.5 text-xs text-muted-foreground'>
-                      {event.event_date ? (
-                        <p className='flex items-center gap-2'>
-                          <Calendar className='size-3.5 shrink-0' aria-hidden />
-                          <span className='truncate'>{formatEventDateRange(event.event_date, event.end_date)}
-                          {event.event_time ? ` · ${formatTimeId(event.event_time)}` : ''}
-                          {event.end_time && event.end_time !== event.event_time ? ` - ${formatTimeId(event.end_time)}` : ''}</span>
-                        </p>
-                      ) : null}
-                      <p className='flex items-center gap-2'>
-                        <MapPin className='size-3.5 shrink-0' aria-hidden />
-                        <span className='truncate'>{formatLocation(event.location_address, event.location_area)}</span>
-                      </p>
-                      <p className='flex items-center gap-2'>
-                        <Users className='size-3.5 shrink-0' aria-hidden />
-                        {current}/{max} peserta
-                      </p>
-                    </div>
-                    <div
-                      className={cn(
-                        'pt-1',
-                        '[&_[data-slot=progress]]:bg-muted/90 [&_[data-slot=progress-indicator]]:bg-primary-container',
+              <div key={event.id} className='w-[85vw] shrink-0 snap-center xs:w-[280px] sm:w-[320px]'>
+                <Link to={`/events/${event.id}`} className='group block h-full'>
+                  <Card className='flex h-full flex-col overflow-hidden border border-border bg-card shadow-sm transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-md'>
+                    
+                    {/* Image Header */}
+                    <div className='relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-muted/30'>
+                      {event.cover_image ? (
+                        <img
+                          src={event.cover_image}
+                          alt=''
+                          className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
+                        />
+                      ) : (
+                        <div className='flex h-full items-center justify-center p-6'>
+                          <Zap className='size-10 text-muted-foreground/20 transition-colors group-hover:text-[#FF8000]/40' />
+                        </div>
                       )}
-                    >
-                      <Progress value={pct} className='h-1.5' />
+                      
+                      {/* Top Left Badge */}
+                      <div className={`absolute left-3 top-3 flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold shadow-sm backdrop-blur-sm ${palette.bg} ${palette.text}`}>
+                        {event.category || 'Event'}
+                      </div>
+
+                      {/* Bottom Left Date Over Image */}
+                      {event.event_date && (
+                        <div className='absolute bottom-3 left-3 flex items-center gap-2 rounded-xl bg-black/60 px-3 py-1.5 text-white backdrop-blur-md'>
+                          <div className='text-center'>
+                            <span className='block text-lg font-bold leading-none'>
+                              {new Date(event.event_date).getDate()}
+                              {event.end_date && event.end_date !== event.event_date && `-${new Date(event.end_date).getDate()}`}
+                            </span>
+                          </div>
+                          <div className='flex flex-col'>
+                            <span className='text-[10px] font-medium uppercase leading-tight text-white/90'>
+                              {new Date(event.event_date).toLocaleString('id-ID', { month: 'short' })}
+                            </span>
+                            <span className='text-[10px] leading-tight text-white/80'>
+                              {new Date(event.event_date).toLocaleString('id-ID', { weekday: 'short' })}
+                              {event.event_time ? ` • ${event.event_time.slice(0, 5)}` : ''}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+
+                    {/* Body Content */}
+                    <CardContent className='flex flex-1 flex-col justify-between p-4'>
+                      <div className='space-y-3'>
+                        <h3 className='font-display text-base font-bold leading-snug text-foreground line-clamp-2 transition-colors group-hover:text-[#FF8000]'>
+                          {event.title}
+                        </h3>
+                        
+                        <div className='space-y-1.5 text-sm text-muted-foreground'>
+                          {event.event_date && event.event_time ? (
+                            <div className='flex items-center gap-2'>
+                              <Clock className='size-[15px] shrink-0 text-[#FF8000]' />
+                              <span className='truncate'>
+                                {formatTimeId(event.event_time)}
+                                {event.end_time && event.end_time !== event.event_time ? ` - ${formatTimeId(event.end_time)}` : ''}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div className='flex items-start gap-2'>
+                            <MapPin className='mt-0.5 size-[15px] shrink-0 text-[#FF8000]' />
+                            <span className='line-clamp-1'>{formatLocation(event.location_address, event.location_area)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className='mt-4 flex flex-col gap-3'>
+                        {/* Thick Progress bar */}
+                        <div className='h-1.5 w-full overflow-hidden rounded-full bg-muted'>
+                          <div 
+                            className={`h-full rounded-full ${progressColor}`} 
+                            style={{ width: `${Math.min(100, Math.max(2, pct))}%` }} 
+                          />
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className='flex items-center justify-between'>
+                          <div className='flex items-center gap-1.5 text-xs font-medium text-muted-foreground'>
+                            <Users className='size-4' />
+                            <span>{current}/{max} peserta</span>
+                          </div>
+                          
+                          <span className='inline-flex items-center justify-center gap-1.5 rounded-full bg-muted/40 px-4 py-1.5 text-sm font-semibold text-muted-foreground transition-colors group-hover:bg-[#FFF1E5] group-hover:text-[#FF8000]'>
+                            Gabung <span aria-hidden>→</span>
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
             );
           })}
         </div>
