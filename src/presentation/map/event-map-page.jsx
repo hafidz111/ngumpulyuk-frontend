@@ -326,8 +326,6 @@ export default function EventMapPage() {
     setArea('');
   }
 
-  if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
-
   const userIcon = useMemo(
     () =>
       new L.Icon({
@@ -342,6 +340,8 @@ export default function EventMapPage() {
       }),
     [],
   );
+
+  if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
 
   return (
     <div className='flex min-h-svh flex-col bg-surface text-foreground'>
