@@ -33,3 +33,35 @@ export async function uploadEventCover(file) {
 
   return urlData.publicUrl;
 }
+
+/**
+ * Upload thread image to Supabase Storage and return its public URL.
+ * @param {File} file
+ * @returns {Promise<string>}
+ */
+export async function uploadThreadImage(file) {
+  const ext = file.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const filePath = `threads/${fileName}`;
+
+  if (!supabase) {
+    throw new Error('Supabase client belum dikonfigurasi. Pastikan .env sudah diatur dengan benar.');
+  }
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || 'Gagal mengupload gambar thread.');
+  }
+
+  const { data: urlData } = supabase.storage
+    .from(BUCKET)
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
+}

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Clock, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Clock, Heart, MessageCircle, Trash2 } from 'lucide-react';
 
 import { Card } from '@/presentation/components/ui/card';
 import { Avatar, AvatarImage } from '@/presentation/components/ui/avatar';
@@ -19,33 +19,116 @@ function timeAgo(dateStr) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
-export function ThreadCard({ thread, communityName, communityId }) {
+export function ThreadCard({
+  thread,
+  communityName,
+  communityId,
+  onLike,
+  onOpenComments,
+  onDelete,
+  isLiking = false,
+  isLiked = false,
+  isDeleting = false,
+  canDelete = false,
+}) {
   const author = thread.author ?? thread.user ?? {};
   const likeCount = thread.like_count ?? thread.likes_count ?? 0;
   const commentCount = thread.comment_count ?? thread.comments_count ?? 0;
+  const imageList = Array.isArray(thread.images) ? thread.images : (thread.image ? [thread.image] : []);
+  const firstInterest = Array.isArray(author.interests)
+    ? author.interests[0]
+    : (author.interest || thread.interest || null);
+  const profilePath = author.username ? `/profile/${author.username}` : null;
+
+  function authorDisplayName() {
+    return (
+      author.full_name ||
+      author.username ||
+      author.display_name ||
+      author.displayName ||
+      author.name ||
+      (typeof author.email === 'string' ? author.email.split('@')[0] : '') ||
+      'User'
+    );
+  }
+
+  function authorInitial() {
+    const first = authorDisplayName().trim().charAt(0).toUpperCase();
+    return first || 'U';
+  }
+
+  function authorColorClass() {
+    const palette = [
+      'bg-rose-200 text-rose-900',
+      'bg-sky-200 text-sky-900',
+      'bg-emerald-200 text-emerald-900',
+      'bg-amber-200 text-amber-900',
+      'bg-violet-200 text-violet-900',
+      'bg-fuchsia-200 text-fuchsia-900',
+      'bg-cyan-200 text-cyan-900',
+    ];
+    const source = String(
+      author.id ||
+      author.username ||
+      author.full_name ||
+      author.email ||
+      'user',
+    );
+    let hash = 0;
+    for (let i = 0; i < source.length; i += 1) {
+      hash = (hash << 5) - hash + source.charCodeAt(i);
+      hash |= 0;
+    }
+    return palette[Math.abs(hash) % palette.length];
+  }
 
   return (
     <Card className='border border-border/80 bg-card p-5'>
       {/* Author row */}
       <div className='flex items-start gap-3'>
-        <Avatar className='size-10'>
-          {author.profile_picture ? (
-            <AvatarImage src={author.profile_picture} />
-          ) : (
-            <div className='flex size-full items-center justify-center bg-gradient-to-br from-primary-container/30 to-secondary/30 text-sm font-bold text-foreground'>
-              {(author.full_name || author.username || '?').charAt(0).toUpperCase()}
-            </div>
-          )}
-        </Avatar>
+        {profilePath ? (
+          <Link to={profilePath} className='shrink-0'>
+            <Avatar className='size-10'>
+              {author.profile_picture ? (
+                <AvatarImage src={author.profile_picture} />
+              ) : (
+                <div className={`flex size-full items-center justify-center text-sm font-bold ${authorColorClass()}`}>
+                  {authorInitial()}
+                </div>
+              )}
+            </Avatar>
+          </Link>
+        ) : (
+          <Avatar className='size-10'>
+            {author.profile_picture ? (
+              <AvatarImage src={author.profile_picture} />
+            ) : (
+              <div className={`flex size-full items-center justify-center text-sm font-bold ${authorColorClass()}`}>
+                {authorInitial()}
+              </div>
+            )}
+          </Avatar>
+        )}
         <div className='min-w-0 flex-1'>
           <div className='flex items-center gap-1.5 text-sm'>
-            <span className='font-bold text-foreground'>
-              {author.full_name || author.username || 'Anonim'}
-            </span>
+            {profilePath ? (
+              <Link to={profilePath} className='font-bold text-foreground hover:underline'>
+                {authorDisplayName()}
+              </Link>
+            ) : (
+              <span className='font-bold text-foreground'>
+                {authorDisplayName()}
+              </span>
+            )}
             <span className='text-xs text-muted-foreground'>
               • {timeAgo(thread.created_at)}
             </span>
           </div>
+          {firstInterest ? (
+            <p className='mt-0.5 text-[11px] font-medium text-muted-foreground'>
+              {firstInterest}
+            </p>
+          ) : null}
           {communityName ? (
             <Link
               to={`/community/${communityId}`}
@@ -74,28 +157,49 @@ export function ThreadCard({ thread, communityName, communityId }) {
       ) : null}
 
       {/* Thread Image */}
-      {thread.image ? (
-        <img
-          src={thread.image}
-          alt=''
-          className='mt-3 w-full rounded-xl object-cover max-h-80'
-        />
+      {imageList.length > 0 ? (
+        <div className={`mt-3 grid gap-2 ${imageList.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {imageList.slice(0, 3).map((img, idx) => (
+            <img
+              key={`${img}-${idx}`}
+              src={img}
+              alt=''
+              className='max-h-80 w-full rounded-xl object-cover'
+            />
+          ))}
+        </div>
       ) : null}
 
       {/* Actions */}
       <div className='mt-4 flex items-center gap-6 text-muted-foreground'>
-        <button type='button' className='inline-flex items-center gap-1.5 text-sm hover:text-foreground transition-colors'>
-          <Heart className='size-4' />
+        <button
+          type='button'
+          onClick={() => onLike?.(thread)}
+          disabled={isLiking}
+          className='inline-flex items-center gap-1.5 text-sm hover:text-foreground transition-colors disabled:opacity-60'
+        >
+          <Heart className={`size-4 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
           {likeCount}
         </button>
-        <button type='button' className='inline-flex items-center gap-1.5 text-sm hover:text-foreground transition-colors'>
+        <button
+          type='button'
+          onClick={() => onOpenComments?.(thread)}
+          className='inline-flex items-center gap-1.5 text-sm hover:text-foreground transition-colors'
+        >
           <MessageCircle className='size-4' />
           {commentCount}
         </button>
-        <button type='button' className='inline-flex items-center gap-1.5 text-sm hover:text-foreground transition-colors'>
-          <Share2 className='size-4' />
-          Share
-        </button>
+        {canDelete ? (
+          <button
+            type='button'
+            onClick={() => onDelete?.(thread)}
+            disabled={isDeleting}
+            className='inline-flex items-center gap-1.5 text-sm text-destructive hover:text-destructive/80 transition-colors disabled:opacity-60'
+          >
+            <Trash2 className='size-4' />
+            Hapus
+          </button>
+        ) : null}
       </div>
     </Card>
   );

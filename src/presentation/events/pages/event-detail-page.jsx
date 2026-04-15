@@ -26,6 +26,8 @@ import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Card } from '@/presentation/components/ui/card';
+import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
+import { AvatarGroup, AvatarGroupCount } from '@/presentation/components/ui/avatar-group';
 import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
 import { formatTimeId, formatLocation, formatEventDateRange } from '@/shared/lib/formatters';
 
@@ -41,6 +43,63 @@ const DIFFICULTY_COLORS = {
   advanced: 'bg-red-100 text-red-700',
 };
 
+function extractParticipantsPayload(payload) {
+  const data = payload?.data ?? payload;
+  if (Array.isArray(data)) return { items: data, count: data.length };
+  if (Array.isArray(data?.participants)) {
+    return { items: data.participants, count: data.count ?? data.total ?? data.participants.length };
+  }
+  if (Array.isArray(data?.results)) {
+    return { items: data.results, count: data.count ?? data.total ?? data.results.length };
+  }
+  if (Array.isArray(data?.data)) return { items: data.data, count: data.count ?? data.data.length };
+  if (Array.isArray(data?.data?.participants)) {
+    return {
+      items: data.data.participants,
+      count: data.data.count ?? data.data.total ?? data.data.participants.length,
+    };
+  }
+  if (Array.isArray(data?.data?.results)) {
+    return {
+      items: data.data.results,
+      count: data.data.count ?? data.data.total ?? data.data.results.length,
+    };
+  }
+  return { items: [], count: 0 };
+}
+
+function nameFromParticipant(participant, idx) {
+  return (
+    participant.full_name ||
+    participant.user?.full_name ||
+    participant.display_name ||
+    participant.username ||
+    participant.user?.username ||
+    participant.email ||
+    participant.user?.email ||
+    `Peserta ${idx + 1}`
+  );
+}
+
+function colorClassForIdentity(identity) {
+  const palette = [
+    'bg-rose-200 text-rose-900',
+    'bg-sky-200 text-sky-900',
+    'bg-emerald-200 text-emerald-900',
+    'bg-amber-200 text-amber-900',
+    'bg-violet-200 text-violet-900',
+    'bg-fuchsia-200 text-fuchsia-900',
+    'bg-cyan-200 text-cyan-900',
+  ];
+  const source = String(identity || 'participant');
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash << 5) - hash + source.charCodeAt(i);
+    hash |= 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+}
+
 export default function EventDetailPage() {
   const { isAuthenticated, user } = useAuth();
   const { id } = useParams();
@@ -48,6 +107,7 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
+  const [participantsTotal, setParticipantsTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState('');
@@ -82,14 +142,9 @@ export default function EventDetailPage() {
   const loadParticipants = useCallback(async () => {
     try {
       const res = await eventsApi.participants(id);
-      const data = res.data;
-      if (Array.isArray(data)) {
-        setParticipants(data);
-      } else if (data?.results) {
-        setParticipants(data.results);
-      } else if (data?.data) {
-        setParticipants(Array.isArray(data.data) ? data.data : data.data?.results ?? []);
-      }
+      const parsed = extractParticipantsPayload(res.data);
+      setParticipants(parsed.items);
+      setParticipantsTotal(parsed.count ?? parsed.items.length);
     } catch {
       // silently ignore
     }
@@ -200,6 +255,9 @@ export default function EventDetailPage() {
   }
 
   const locationDisplay = formatLocation(event.location_address, event.location_area);
+  const normalizedParticipantCount = participantCount || participantsTotal || participants.length;
+  const participantPreview = participants.slice(0, 7);
+  const remainingParticipants = Math.max(0, normalizedParticipantCount - participantPreview.length);
 
   return (
     <div className='min-h-svh bg-surface text-foreground'>
@@ -278,7 +336,7 @@ export default function EventDetailPage() {
               <InfoItem icon={Calendar} label='Tanggal' value={dateDisplay} />
               <InfoItem icon={Clock} label='Waktu' value={timeDisplay} />
               <InfoItem icon={MapPin} label='Lokasi' value={locationDisplay} />
-              <InfoItem icon={Users} label='Peserta' value={`${participantCount}/${maxP ?? '∞'}`} />
+              <InfoItem icon={Users} label='Peserta' value={`${normalizedParticipantCount}/${maxP ?? '∞'}`} />
               <InfoItem icon={Target} label='Level' value={DIFFICULTY_LABEL[event.difficulty_level] || event.difficulty_level} />
               {event.is_competition ? (
                 <InfoItem icon={Trophy} label='Tipe' value='Kompetisi' />
@@ -390,30 +448,30 @@ export default function EventDetailPage() {
               <div className='p-5'>
                 <h3 className='mb-3 flex items-center gap-2 font-display text-sm font-bold text-foreground'>
                   <Users className='size-4 text-primary-container' />
-                  Peserta ({participantCount})
+                  Peserta ({normalizedParticipantCount})
                 </h3>
                 {participants.length > 0 ? (
-                  <ul className='space-y-2.5'>
-                    {participants.map((p, idx) => {
-                      const name =
-                        p.full_name ||
-                        p.user?.full_name ||
-                        p.display_name ||
-                        p.email ||
-                        p.user?.email ||
-                        `Peserta ${idx + 1}`;
-                      return (
-                        <li key={p.id ?? idx} className='flex items-center gap-3'>
-                          <span className='flex size-8 items-center justify-center rounded-full bg-primary-container/15 text-xs font-bold text-primary-container'>
-                            {name.charAt(0).toUpperCase()}
-                          </span>
-                          <span className='text-sm text-foreground truncate'>
-                            {name}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div className='space-y-3'>
+                    <AvatarGroup>
+                      {participantPreview.map((p, idx) => {
+                        const name = nameFromParticipant(p, idx);
+                        const identity = p.id ?? p.user?.id ?? p.email ?? p.user?.email ?? name;
+                        return (
+                          <Avatar key={p.id ?? p.user?.id ?? `${name}-${idx}`} className='avatar-group-item size-9'>
+                            <AvatarFallback className={colorClassForIdentity(identity)}>
+                              {name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        );
+                      })}
+                      {remainingParticipants > 0 ? (
+                        <AvatarGroupCount>+{remainingParticipants}</AvatarGroupCount>
+                      ) : null}
+                    </AvatarGroup>
+                    <p className='text-xs text-muted-foreground'>
+                      Total peserta terdaftar: {normalizedParticipantCount}
+                    </p>
+                  </div>
                 ) : (
                   <p className='text-sm text-muted-foreground'>
                     Belum ada peserta. Jadilah yang pertama!

@@ -8,6 +8,17 @@ import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
 
+function extractCollection(payload) {
+  const data = payload?.data ?? payload;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.members)) return data.members;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.results)) return data.data.results;
+  if (Array.isArray(data?.data?.members)) return data.data.members;
+  return [];
+}
+
 export function ManageAdminsModal({ open, onClose, communityId, admins = [], onPromoted }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -18,14 +29,11 @@ export function ManageAdminsModal({ open, onClose, communityId, admins = [], onP
     if (!communityId) return;
     setLoading(true);
     try {
-      const res = await communitiesApi.members(communityId, { role: 'member', limit: 50 });
-      const data = res.data;
-      let items = [];
-      if (Array.isArray(data)) items = data;
-      else if (data?.results) items = data.results;
-      else if (data?.data) {
-        const inner = data.data;
-        items = Array.isArray(inner) ? inner : (inner?.results || []);
+      let res = await communitiesApi.members(communityId, { role: 'member', limit: 50 });
+      let items = extractCollection(res.data);
+      if (items.length === 0) {
+        res = await communitiesApi.members(communityId, { limit: 50 });
+        items = extractCollection(res.data).filter((m) => (m.role ?? 'member') === 'member');
       }
       setMembers(items);
     } catch {

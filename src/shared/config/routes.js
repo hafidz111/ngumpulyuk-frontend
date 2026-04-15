@@ -16,6 +16,7 @@ export const ROUTES = {
   communityDetail: '/community/:id',
   map: '/map',
   profile: '/profile',
+  profileByUsername: '/profile/:username',
   notFound: '/404',
   errorPattern: '/error/:code',
 };

@@ -3,7 +3,6 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
-  CheckCircle,
   Loader2,
   LogOut,
   Settings,
@@ -24,6 +23,21 @@ import { ThreadCard } from '../components/thread-card';
 import { ThreadComposer } from '../components/thread-composer';
 import { MemberSection } from '../components/member-section';
 import { ManageAdminsModal } from '../components/manage-admins-modal';
+import { ThreadCommentsDialog } from '../components/thread-comments-dialog';
+import { CommunityConfirmDialog } from '../components/community-confirm-dialog';
+
+function extractCollection(payload) {
+  const data = payload?.data ?? payload;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.members)) return data.members;
+  if (Array.isArray(data?.threads)) return data.threads;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.results)) return data.data.results;
+  if (Array.isArray(data?.data?.members)) return data.data.members;
+  if (Array.isArray(data?.data?.threads)) return data.data.threads;
+  return [];
+}
 
 export default function CommunityDetailPage() {
   const { id } = useParams();
@@ -40,16 +54,31 @@ export default function CommunityDetailPage() {
 
   const [threads, setThreads] = useState([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
+  const [togglingLikeId, setTogglingLikeId] = useState(null);
+  const [deletingThreadId, setDeletingThreadId] = useState(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [activeThread, setActiveThread] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [likingCommentId, setLikingCommentId] = useState(null);
 
-  const [joining, setJoining] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
 
   const [manageOpen, setManageOpen] = useState(false);
+  const [confirmType, setConfirmType] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
-  const isAdmin = admins.some((a) => {
-    const u = a.user ?? a;
-    return u.id === user?.id;
+  const currentMembership = members.find((m) => {
+    const u = m.user ?? m;
+    return String(u?.id) === String(user?.id);
   });
+  const isCreator =
+    String(community?.created_by?.id ?? community?.creator?.id ?? community?.owner?.id ?? '') ===
+    String(user?.id ?? '');
+  const currentRole = currentMembership?.role ?? community?.my_role ?? (isCreator ? 'owner' : null);
+  const isOwner = currentRole === 'owner';
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'moderator';
 
   const fetchCommunity = useCallback(async () => {
     setLoading(true);
@@ -69,19 +98,15 @@ export default function CommunityDetailPage() {
   const fetchMembers = useCallback(async () => {
     try {
       const res = await communitiesApi.members(id, { limit: 50 });
-      const data = res.data;
-      let items = [];
-      if (Array.isArray(data)) items = data;
-      else if (data?.results) items = data.results;
-      else if (data?.data) {
-        const inner = data.data;
-        items = Array.isArray(inner) ? inner : (inner?.results || []);
-      }
+      const items = extractCollection(res.data);
+      const source = res.data?.data ?? res.data;
+      const countFromApi = source?.count ?? source?.total ?? source?.member_count;
       setMembers(items);
       const adminList = items.filter(
         (m) => m.role === 'admin' || m.role === 'owner' || m.role === 'moderator',
       );
       setAdmins(adminList);
+      setMemberCount(countFromApi ?? items.length);
     } catch {
       // silently ignore
     }
@@ -91,14 +116,7 @@ export default function CommunityDetailPage() {
     setThreadsLoading(true);
     try {
       const res = await communitiesApi.threads(id, { limit: 20, sort: 'latest' });
-      const data = res.data;
-      let items = [];
-      if (Array.isArray(data)) items = data;
-      else if (data?.results) items = data.results;
-      else if (data?.data) {
-        const inner = data.data;
-        items = Array.isArray(inner) ? inner : (inner?.results || []);
-      }
+      const items = extractCollection(res.data);
       setThreads(items);
     } catch {
       // silently ignore
@@ -114,39 +132,166 @@ export default function CommunityDetailPage() {
   }, [fetchCommunity, fetchMembers, fetchThreads]);
 
   async function handleJoin() {
-    setJoining(true);
+    setConfirmLoading(true);
     try {
       await communitiesApi.join(id);
       setIsJoined(true);
       setMemberCount((c) => c + 1);
       toast.success('Berhasil bergabung!');
       fetchMembers();
+      setConfirmType(null);
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Gagal bergabung.');
     } finally {
-      setJoining(false);
+      setConfirmLoading(false);
     }
   }
 
   async function handleLeave() {
-    setJoining(true);
+    setConfirmLoading(true);
     try {
       await communitiesApi.leave(id);
       setIsJoined(false);
       setMemberCount((c) => Math.max(0, c - 1));
       toast.success('Berhasil keluar dari komunitas.');
       fetchMembers();
+      setConfirmType(null);
+      setManageOpen(false);
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Gagal keluar.');
     } finally {
-      setJoining(false);
+      setConfirmLoading(false);
+    }
+  }
+
+  async function handleDeleteCommunity() {
+    setConfirmLoading(true);
+    try {
+      await communitiesApi.remove(id);
+      toast.success('Komunitas berhasil dihapus.');
+      navigate(ROUTES.community, { replace: true });
+    } catch (err) {
+      toast.error(err?.response?.data?.error?.message || 'Gagal menghapus komunitas.');
+    } finally {
+      setConfirmLoading(false);
+      setConfirmType(null);
     }
   }
 
   async function handlePostThread(body) {
-    await communitiesApi.createThread(id, body);
+    await communitiesApi.createThread(id, {
+      title: body.content?.trim()?.slice(0, 64),
+      content: body.content,
+      images: body.images || [],
+    });
     toast.success('Thread berhasil dipost!');
     fetchThreads();
+  }
+
+  async function handleLikeThread(thread) {
+    const threadId = thread?.id;
+    if (!threadId || togglingLikeId) return;
+    setTogglingLikeId(threadId);
+    const alreadyLiked = Boolean(thread.is_liked);
+    try {
+      if (alreadyLiked) await communitiesApi.unlikeThread(threadId);
+      else await communitiesApi.likeThread(threadId);
+      setThreads((prev) =>
+        prev.map((item) => (item.id === threadId
+          ? {
+            ...item,
+            is_liked: !alreadyLiked,
+            like_count: Math.max(
+              0,
+              (item.like_count ?? item.likes_count ?? 0) + (alreadyLiked ? -1 : 1),
+            ),
+          }
+          : item)),
+      );
+    } catch {
+      toast.error('Gagal memperbarui like thread.');
+    } finally {
+      setTogglingLikeId(null);
+    }
+  }
+
+  async function handleDeleteThread(thread) {
+    const threadId = thread?.id;
+    if (!threadId || deletingThreadId) return;
+    const confirmed = window.confirm('Hapus thread ini? Tindakan ini tidak bisa dibatalkan.');
+    if (!confirmed) return;
+
+    setDeletingThreadId(threadId);
+    try {
+      await communitiesApi.removeThread(threadId);
+      setThreads((prev) => prev.filter((item) => item.id !== threadId));
+      toast.success('Thread berhasil dihapus.');
+    } catch {
+      toast.error('Gagal menghapus thread.');
+    } finally {
+      setDeletingThreadId(null);
+    }
+  }
+
+  async function loadThreadComments(thread) {
+    if (!thread?.id) return;
+    setCommentsLoading(true);
+    try {
+      const res = await communitiesApi.threadComments(thread.id, { limit: 50, offset: 0 });
+      const data = res.data;
+      let items = [];
+      if (Array.isArray(data)) items = data;
+      else if (Array.isArray(data?.results)) items = data.results;
+      else if (Array.isArray(data?.data)) items = data.data;
+      else if (Array.isArray(data?.data?.results)) items = data.data.results;
+      setComments(items);
+    } catch {
+      setComments([]);
+      toast.error('Gagal memuat komentar.');
+    } finally {
+      setCommentsLoading(false);
+    }
+  }
+
+  function handleOpenComments(thread) {
+    setActiveThread(thread);
+    setCommentsOpen(true);
+    loadThreadComments(thread);
+  }
+
+  async function handleSubmitComment(thread, content) {
+    setCommentSubmitting(true);
+    try {
+      await communitiesApi.createThreadComment(thread.id, { content });
+      await loadThreadComments(thread);
+      setThreads((prev) =>
+        prev.map((item) => (item.id === thread.id
+          ? { ...item, comment_count: (item.comment_count ?? item.comments_count ?? 0) + 1 }
+          : item)),
+      );
+      toast.success('Komentar berhasil dikirim.');
+    } catch {
+      toast.error('Gagal mengirim komentar.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
+
+  async function handleLikeComment(comment) {
+    if (!comment?.id || likingCommentId) return;
+    setLikingCommentId(comment.id);
+    try {
+      await communitiesApi.likeComment(comment.id);
+      setComments((prev) =>
+        prev.map((item) => (item.id === comment.id
+          ? { ...item, is_liked: true, like_count: (item.like_count ?? item.likes_count ?? 0) + 1 }
+          : item)),
+      );
+    } catch {
+      toast.error('Gagal like komentar.');
+    } finally {
+      setLikingCommentId(null);
+    }
   }
 
   if (!isAuthenticated) {
@@ -241,7 +386,7 @@ export default function CommunityDetailPage() {
                   ) : null}
                 </div>
               </div>
-              {isAdmin ? (
+              {isOwner ? (
                 <Button
                   type='button'
                   onClick={() => setManageOpen(true)}
@@ -282,28 +427,45 @@ export default function CommunityDetailPage() {
 
             {/* Join / Leave */}
             {isJoined ? (
-              <Button
-                type='button'
-                variant='outline'
-                onClick={handleLeave}
-                disabled={joining}
-                className='shrink-0 rounded-full px-5 font-semibold'
-              >
-                {joining ? (
-                  <Loader2 className='size-4 animate-spin' />
-                ) : (
-                  <CheckCircle className='size-4' />
-                )}
-                Joined
-              </Button>
+              isOwner ? (
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={() => setConfirmType('owner-leave-community')}
+                  disabled={confirmLoading}
+                  className='shrink-0 rounded-full px-5 font-semibold'
+                >
+                  {confirmLoading && confirmType === 'owner-leave-community' ? (
+                    <Loader2 className='size-4 animate-spin' />
+                  ) : (
+                    <LogOut className='size-4' />
+                  )}
+                  Keluar
+                </Button>
+              ) : (
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={() => setConfirmType('leave-community')}
+                  disabled={confirmLoading}
+                  className='shrink-0 rounded-full px-5 font-semibold'
+                >
+                  {confirmLoading && confirmType === 'leave-community' ? (
+                    <Loader2 className='size-4 animate-spin' />
+                  ) : (
+                    <LogOut className='size-4' />
+                  )}
+                  Keluar
+                </Button>
+              )
             ) : (
               <Button
                 type='button'
-                onClick={handleJoin}
-                disabled={joining}
+                onClick={() => setConfirmType('join-community')}
+                disabled={confirmLoading}
                 className='shrink-0 rounded-full bg-primary-container px-5 font-semibold text-primary-foreground hover:bg-primary-container/90'
               >
-                {joining ? (
+                {confirmLoading && confirmType === 'join-community' ? (
                   <Loader2 className='size-4 animate-spin' />
                 ) : (
                   <UserPlus className='size-4' />
@@ -319,7 +481,7 @@ export default function CommunityDetailPage() {
           <MemberSection
             members={members}
             totalCount={memberCount}
-            admins={admins}
+            isOwner={isOwner}
           />
         </div>
 
@@ -329,6 +491,7 @@ export default function CommunityDetailPage() {
             <ThreadComposer
               onPost={handlePostThread}
               communities={[{ id: String(community.id), name: community.name }]}
+              autoSelectSingleCommunity
             />
           </div>
         ) : null}
@@ -353,6 +516,15 @@ export default function CommunityDetailPage() {
                 thread={t}
                 communityName={community.name}
                 communityId={community.id}
+                isLiked={Boolean(t.is_liked)}
+                isLiking={togglingLikeId === t.id}
+                onLike={handleLikeThread}
+                onOpenComments={handleOpenComments}
+                onDelete={handleDeleteThread}
+                canDelete={
+                  isAdmin || String(t.author?.id ?? t.user?.id) === String(user?.id)
+                }
+                isDeleting={deletingThreadId === t.id}
               />
             ))
           )}
@@ -369,6 +541,57 @@ export default function CommunityDetailPage() {
           fetchMembers();
           fetchCommunity();
         }}
+      />
+      <ThreadCommentsDialog
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
+        thread={activeThread}
+        comments={comments}
+        loading={commentsLoading}
+        submitting={commentSubmitting}
+        likingCommentId={likingCommentId}
+        onSubmitComment={handleSubmitComment}
+        onLikeComment={handleLikeComment}
+      />
+      <CommunityConfirmDialog
+        open={Boolean(confirmType)}
+        onOpenChange={() => {
+          if (!confirmLoading) setConfirmType(null);
+        }}
+        title={
+          confirmType === 'join-community'
+            ? 'Gabung komunitas ini?'
+            : confirmType === 'leave-community'
+              ? 'Keluar dari komunitas ini?'
+              : confirmType === 'owner-leave-community'
+                ? 'Kamu adalah creator komunitas'
+                : 'Hapus komunitas ini?'
+        }
+        description={
+          confirmType === 'join-community'
+            ? 'Kamu akan menjadi anggota komunitas dan bisa ikut diskusi.'
+            : confirmType === 'leave-community'
+              ? 'Kamu tidak bisa posting thread sampai gabung kembali.'
+              : confirmType === 'owner-leave-community'
+                ? 'Creator tidak bisa keluar dari komunitas. Untuk keluar, kamu harus menghapus komunitas ini.'
+                : 'Semua thread dan data komunitas akan hilang permanen.'
+        }
+        confirmLabel={
+          confirmType === 'join-community'
+            ? 'Ya, gabung'
+            : confirmType === 'leave-community'
+              ? 'Ya, keluar'
+              : confirmType === 'owner-leave-community'
+                ? 'Hapus komunitas'
+              : 'Ya, hapus komunitas'
+        }
+        onConfirm={() => {
+          if (confirmType === 'join-community') handleJoin();
+          else if (confirmType === 'leave-community') handleLeave();
+          else handleDeleteCommunity();
+        }}
+        loading={confirmLoading}
+        destructive={confirmType === 'delete-community' || confirmType === 'owner-leave-community'}
       />
     </div>
   );

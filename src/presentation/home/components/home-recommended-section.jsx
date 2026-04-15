@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/presentation/components/ui/card';
 import { ROUTES } from '@/shared/config/routes';
 import { cn } from '@/lib/utils';
 import { eventsApi } from '@/infrastructure/events/events-api';
+import { usersApi } from '@/infrastructure/users/users-api';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 
 export function HomeRecommendedSection() {
@@ -17,8 +18,8 @@ export function HomeRecommendedSection() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await eventsApi.list({ limit: 6, sort: 'popular', status: 'upcoming' });
-        const data = res.data;
+        const eventsRes = await eventsApi.list({ limit: 6, sort: 'popular', status: 'upcoming' });
+        const data = eventsRes.data;
         let items = [];
         if (Array.isArray(data)) items = data;
         else if (data?.results) items = data.results;
@@ -26,7 +27,19 @@ export function HomeRecommendedSection() {
           const inner = data.data;
           items = Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
         }
-        if (!cancelled) setEvents(items.slice(0, 6));
+        let joinedIds = new Set();
+        try {
+          const joinedIdsRes = await usersApi.joinedEventIds();
+          const joinedPayload = joinedIdsRes.data?.data ?? joinedIdsRes.data;
+          joinedIds = new Set((joinedPayload?.event_ids || []).map((id) => String(id)));
+        } catch {
+          joinedIds = new Set();
+        }
+        const merged = items.map((event) => ({
+          ...event,
+          is_joined: Boolean(event.is_joined || joinedIds.has(String(event.id))),
+        }));
+        if (!cancelled) setEvents(merged.slice(0, 6));
       } catch {
         // silently ignore
       } finally {
@@ -60,6 +73,14 @@ export function HomeRecommendedSection() {
           {events.map((event, idx) => {
             const current = event.participant_count ?? event.participants_count ?? event.current_participants ?? 0;
             const max = event.max_participants ?? '∞';
+            const isJoined = Boolean(
+              event.is_joined ||
+              event.is_participant ||
+              event.joined ||
+              event.is_registered ||
+              event.has_joined ||
+              event.registration_status === 'joined',
+            );
             const maxNum = max === '∞' ? 1 : max;
             const pct = max === '∞' ? 0 : Math.min(100, Math.round((current / maxNum) * 100));
 
@@ -160,8 +181,13 @@ export function HomeRecommendedSection() {
                             <span>{current}/{max} peserta</span>
                           </div>
                           
-                          <span className='inline-flex items-center justify-center gap-1.5 rounded-full bg-muted/40 px-4 py-1.5 text-sm font-semibold text-muted-foreground transition-colors group-hover:bg-[#FFF1E5] group-hover:text-[#FF8000]'>
-                            Gabung <span aria-hidden>→</span>
+                          <span className={cn(
+                            'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                            isJoined
+                              ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-100'
+                              : 'bg-muted/40 text-muted-foreground group-hover:bg-[#FFF1E5] group-hover:text-[#FF8000]',
+                          )}>
+                            {isJoined ? 'Lihat Detail' : 'Gabung'} <span aria-hidden>→</span>
                           </span>
                         </div>
                       </div>

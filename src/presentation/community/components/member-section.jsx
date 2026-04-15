@@ -1,69 +1,75 @@
-import { Avatar, AvatarImage } from '@/presentation/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
+import { AvatarGroup, AvatarGroupCount } from '@/presentation/components/ui/avatar-group';
 import { Card } from '@/presentation/components/ui/card';
-import { Users, Shield } from 'lucide-react';
+import { Users } from 'lucide-react';
 
-export function MemberSection({ members = [], totalCount = 0, admins = [] }) {
-  const displayMembers = members.slice(0, 5);
+export function MemberSection({ members = [], totalCount = 0, isOwner = false }) {
+  const fallbackColorClasses = [
+    'bg-rose-200 text-rose-900',
+    'bg-sky-200 text-sky-900',
+    'bg-emerald-200 text-emerald-900',
+    'bg-amber-200 text-amber-900',
+    'bg-violet-200 text-violet-900',
+    'bg-fuchsia-200 text-fuchsia-900',
+    'bg-cyan-200 text-cyan-900',
+  ];
+
+  function normalizeMember(member, idx = 0) {
+    const user = member?.user ?? member ?? {};
+    return {
+      ...member,
+      user,
+      id: user.id ?? member?.id ?? `${user.username || user.full_name || 'member'}-${idx}`,
+      role: member?.role ?? user?.role ?? 'member',
+    };
+  }
+
+  function initialFromUser(user = {}) {
+    return (user.full_name || user.username || '?').charAt(0).toUpperCase();
+  }
+
+  function colorClassForUser(user = {}) {
+    const source = String(user.id ?? user.username ?? user.full_name ?? 'member');
+    let hash = 0;
+    for (let i = 0; i < source.length; i += 1) {
+      hash = (hash << 5) - hash + source.charCodeAt(i);
+      hash |= 0;
+    }
+    const idx = Math.abs(hash) % fallbackColorClasses.length;
+    return fallbackColorClasses[idx];
+  }
+
+  const normalizedMembers = members
+    .map((member, idx) => normalizeMember(member, idx));
+
+  const displayMembers = normalizedMembers.slice(0, 8);
   const remaining = totalCount - displayMembers.length;
 
   return (
     <Card className='border border-border/80 bg-card p-5'>
       <h3 className='font-display text-base font-bold text-foreground mb-4'>Members</h3>
 
-      {/* Admin list */}
-      {admins.length > 0 ? (
-        <div className='mb-4 space-y-2.5'>
-          <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>Admin</p>
-          {admins.map((admin) => {
-            const user = admin.user ?? admin;
-            return (
-              <div key={user.id} className='flex items-center gap-3'>
-                <Avatar className='size-8'>
-                  {user.profile_picture ? (
-                    <AvatarImage src={user.profile_picture} />
-                  ) : (
-                    <div className='flex size-full items-center justify-center bg-gradient-to-br from-primary-container/30 to-secondary/30 text-xs font-bold text-foreground'>
-                      {(user.full_name || user.username || '?').charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </Avatar>
-                <div className='min-w-0 flex-1'>
-                  <p className='text-sm font-semibold text-foreground truncate'>
-                    {user.full_name || user.username}
-                  </p>
-                  <p className='text-xs text-muted-foreground flex items-center gap-1'>
-                    <Shield className='size-3' aria-hidden />
-                    {admin.role === 'owner' ? 'Owner' : 'Admin'}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-
       {/* Member avatars */}
-      <div className='flex items-center gap-1'>
-        <div className='flex -space-x-2'>
-          {displayMembers.map((member) => {
-            const user = member.user ?? member;
-            return (
-              <Avatar key={user.id} className='size-9 ring-2 ring-card'>
-                {user.profile_picture ? (
-                  <AvatarImage src={user.profile_picture} />
-                ) : (
-                  <div className='flex size-full items-center justify-center bg-gradient-to-br from-primary-container/30 to-secondary/30 text-xs font-bold text-foreground'>
-                    {(user.full_name || user.username || '?').charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </Avatar>
-            );
-          })}
-        </div>
+      <AvatarGroup>
+        {displayMembers.map((member) => {
+          const user = member.user ?? member;
+          const isAdminMember = member.role === 'owner' || member.role === 'admin' || member.role === 'moderator';
+          return (
+            <Avatar
+              key={member.id}
+              title={isOwner && isAdminMember ? `${user.full_name || user.username} (Admin)` : (user.full_name || user.username)}
+              className={`avatar-group-item size-9 ${isOwner && isAdminMember ? 'ring-amber-300' : ''}`}
+            >
+              <AvatarFallback className={colorClassForUser(user)}>
+                {initialFromUser(user)}
+              </AvatarFallback>
+            </Avatar>
+          );
+        })}
         {remaining > 0 ? (
-          <span className='ml-1 text-sm font-medium text-muted-foreground'>+{remaining}</span>
+          <AvatarGroupCount>+{remaining}</AvatarGroupCount>
         ) : null}
-      </div>
+      </AvatarGroup>
 
       <p className='mt-2.5 text-sm text-muted-foreground'>
         <Users className='mr-1 inline size-3.5' aria-hidden />

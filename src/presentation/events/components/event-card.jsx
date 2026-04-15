@@ -29,6 +29,14 @@ export function EventCard({ event, className, idx = 0 }) {
   const pct = max === '∞' ? 0 : Math.min(100, Math.round((current / maxNum) * 100));
 
   const diffClass = DIFFICULTY_COLORS[event.difficulty_level] || DIFFICULTY_COLORS.beginner;
+  const isJoined = Boolean(
+    event.is_joined ||
+    event.is_participant ||
+    event.joined ||
+    event.is_registered ||
+    event.has_joined ||
+    event.registration_status === 'joined',
+  );
 
   const pastelPalettes = [
     { bg: 'bg-[#FFB3BA]', text: 'text-[#9A1F2A]' }, // pastel pink
@@ -160,8 +168,13 @@ export function EventCard({ event, className, idx = 0 }) {
               <span>{current}/{max} peserta</span>
             </div>
             
-            <span className='inline-flex items-center justify-center gap-1.5 rounded-full bg-muted/40 px-4 py-1.5 text-sm font-semibold text-muted-foreground transition-colors group-hover:bg-[#FFF1E5] group-hover:text-[#FF8000]'>
-              Gabung <span aria-hidden>→</span>
+            <span className={cn(
+              'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+              isJoined
+                ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-100'
+                : 'bg-muted/40 text-muted-foreground group-hover:bg-[#FFF1E5] group-hover:text-[#FF8000]',
+            )}>
+              {isJoined ? 'Lihat Detail' : 'Gabung'} <span aria-hidden>→</span>
             </span>
           </div>
         </div>

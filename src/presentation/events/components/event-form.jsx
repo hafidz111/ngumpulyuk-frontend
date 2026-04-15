@@ -90,6 +90,18 @@ export function EventForm({
   });
   const [endCalendarOpen, setEndCalendarOpen] = useState(false);
   const [endTime, setEndTime] = useState(initialData.end_time ?? '');
+  const [registrationDeadlineEnabled, setRegistrationDeadlineEnabled] = useState(
+    Boolean(initialData.registration_deadline || initialData.registration_deadline_time),
+  );
+  const [registrationDeadlineDate, setRegistrationDeadlineDate] = useState(() => {
+    if (initialData.registration_deadline) return new Date(initialData.registration_deadline);
+    return undefined;
+  });
+  const [registrationDeadlineCalendarOpen, setRegistrationDeadlineCalendarOpen] = useState(false);
+  const registrationDeadlineTimeInputRef = useRef(null);
+  const [registrationDeadlineTime, setRegistrationDeadlineTime] = useState(
+    initialData.registration_deadline_time ?? '',
+  );
   const [locationArea, setLocationArea] = useState(initialData.location_area ?? '');
   const [locationAddress, setLocationAddress] = useState(
     initialData.location_address ?? '',
@@ -296,6 +308,15 @@ export function EventForm({
         event_time: eventTime.trim(),
         end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
         end_time: endTime.trim() || null,
+        registration_deadline: format(
+          registrationDeadlineEnabled
+            ? (registrationDeadlineDate || eventDate)
+            : eventDate,
+          'yyyy-MM-dd',
+        ),
+        registration_deadline_time: registrationDeadlineEnabled
+          ? (registrationDeadlineTime.trim() || eventTime.trim() || null)
+          : (eventTime.trim() || null),
         location_area: locationArea,
         location_address: locationAddress.trim(),
         latitude: latitude || '',
@@ -569,6 +590,81 @@ export function EventForm({
                 className='h-12 rounded-xl border-border bg-muted/40 cursor-text'
               />
             </div>
+          </div>
+
+          {/* Registration Deadline */}
+          <div className='space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4 md:p-5'>
+            <div className='flex items-center justify-between gap-4'>
+              <div>
+                <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
+                  <CalendarIcon className='size-4 text-primary-container' aria-hidden />
+                  Batas Registrasi Event
+                </Label>
+                <p className='mt-1 text-xs text-muted-foreground'>
+                  Jika tidak diaktifkan, batas registrasi otomatis mengikuti tanggal & waktu mulai event.
+                </p>
+              </div>
+              <Switch
+                checked={registrationDeadlineEnabled}
+                onCheckedChange={setRegistrationDeadlineEnabled}
+              />
+            </div>
+
+            {registrationDeadlineEnabled ? (
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                <div className='space-y-2'>
+                  <Label className='text-sm font-semibold text-foreground'>
+                    Tanggal Batas Registrasi (Opsional)
+                  </Label>
+                  <Popover
+                    open={registrationDeadlineCalendarOpen}
+                    onOpenChange={setRegistrationDeadlineCalendarOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type='button'
+                        className={cn(
+                          'relative flex h-12 w-full items-center rounded-xl border border-border bg-background px-4 text-left text-sm outline-none transition-colors',
+                          'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                          !registrationDeadlineDate && 'text-muted-foreground',
+                        )}
+                      >
+                        {registrationDeadlineDate
+                          ? format(registrationDeadlineDate, 'dd/MM/yyyy')
+                          : 'Ikuti tanggal mulai event'}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className='w-auto p-0' align='start'>
+                      <Calendar
+                        mode='single'
+                        selected={registrationDeadlineDate}
+                        onSelect={(d) => {
+                          setRegistrationDeadlineDate(d);
+                          setRegistrationDeadlineCalendarOpen(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='registration-deadline-time' className='text-sm font-semibold text-foreground'>
+                    Waktu Batas Registrasi (Opsional)
+                  </Label>
+                  <Input
+                    ref={registrationDeadlineTimeInputRef}
+                    id='registration-deadline-time'
+                    type='time'
+                    value={registrationDeadlineTime}
+                    onChange={(e) => setRegistrationDeadlineTime(e.target.value)}
+                    onClick={() => registrationDeadlineTimeInputRef.current?.showPicker?.()}
+                    onFocus={() => registrationDeadlineTimeInputRef.current?.showPicker?.()}
+                    className='h-12 rounded-xl border-border bg-background cursor-text'
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Location Area & Address */}

@@ -6,6 +6,7 @@ import { Card } from '@/presentation/components/ui/card';
 import { ROUTES } from '@/shared/config/routes';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 import { eventsApi } from '@/infrastructure/events/events-api';
+import { usersApi } from '@/infrastructure/users/users-api';
 
 export function HomeUpcomingSection() {
   const [events, setEvents] = useState([]);
@@ -15,8 +16,8 @@ export function HomeUpcomingSection() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await eventsApi.list({ limit: 5, sort: 'date_asc', status: 'upcoming' });
-        const data = res.data;
+        const eventsRes = await eventsApi.list({ limit: 5, sort: 'date_asc', status: 'upcoming' });
+        const data = eventsRes.data;
         let items = [];
         if (Array.isArray(data)) items = data;
         else if (data?.results) items = data.results;
@@ -24,7 +25,19 @@ export function HomeUpcomingSection() {
           const inner = data.data;
           items = Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
         }
-        if (!cancelled) setEvents(items.slice(0, 5));
+        let joinedIds = new Set();
+        try {
+          const joinedIdsRes = await usersApi.joinedEventIds();
+          const joinedPayload = joinedIdsRes.data?.data ?? joinedIdsRes.data;
+          joinedIds = new Set((joinedPayload?.event_ids || []).map((id) => String(id)));
+        } catch {
+          joinedIds = new Set();
+        }
+        const merged = items.map((event) => ({
+          ...event,
+          is_joined: Boolean(event.is_joined || joinedIds.has(String(event.id))),
+        }));
+        if (!cancelled) setEvents(merged.slice(0, 5));
       } catch {
         // silently ignore
       } finally {

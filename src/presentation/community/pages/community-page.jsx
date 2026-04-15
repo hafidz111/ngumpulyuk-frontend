@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import {
   Loader2,
@@ -8,35 +8,72 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Tabs } from '@/presentation/components/ui/tabs';
-import { apiClient } from '@/infrastructure/http/api-client';
 import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
 import { CommunityCard } from '../components/community-card';
 import { ThreadCard } from '../components/thread-card';
 import { ThreadComposer } from '../components/thread-composer';
+import { ThreadCommentsDialog } from '../components/thread-comments-dialog';
 
 const LIMIT = 12;
+const FEED_LIMIT = 10;
 
 const TAB_ITEMS = [
   { id: 'threads', label: 'Threads', icon: MessageCircle },
   { id: 'communities', label: 'Communities', icon: Users },
 ];
 
+function extractCollection(payload) {
+  const data = payload?.data ?? payload;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.threads)) return data.threads;
+  if (Array.isArray(data?.communities)) return data.communities;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.threads)) return data.data.threads;
+  if (Array.isArray(data?.data?.results)) return data.data.results;
+  if (Array.isArray(data?.data?.communities)) return data.data.communities;
+  return [];
+}
+
+function isJoinedCommunity(item = {}) {
+  return Boolean(
+    item.is_joined ||
+    item.is_member ||
+    item.joined ||
+    item.membership?.joined ||
+    item.membership?.role,
+  );
+}
+
 export default function CommunityPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [tab, setTab] = useState('threads');
 
   const [feedThreads, setFeedThreads] = useState([]);
   const [feedLoading, setFeedLoading] = useState(false);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
+  const [feedOffset, setFeedOffset] = useState(0);
+  const [feedTotal, setFeedTotal] = useState(0);
+  const loadMoreRef = useRef(null);
+  const [togglingLikeId, setTogglingLikeId] = useState(null);
+  const [deletingThreadId, setDeletingThreadId] = useState(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [activeThread, setActiveThread] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [likingCommentId, setLikingCommentId] = useState(null);
 
   const [communities, setCommunities] = useState([]);
+  const [composerCommunities, setComposerCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
@@ -51,25 +88,15 @@ export default function CommunityPage() {
 
         const res = await communitiesApi.list(params);
         const data = res.data;
-
-        let items = [];
+        let items = extractCollection(data);
         let count = 0;
         if (Array.isArray(data)) {
-          items = data;
           count = data.length;
         } else if (data?.results) {
-          items = data.results;
           count = data.count ?? data.results.length;
         } else if (data?.data) {
           const inner = data.data;
-          if (Array.isArray(inner)) {
-            items = inner;
-            count = data.count ?? inner.length;
-          } else if (inner?.results || inner?.communities) {
-            const arr = inner.results || inner.communities;
-            items = arr;
-            count = inner.count ?? inner.total ?? arr.length;
-          }
+          count = inner.count ?? inner.total ?? (Array.isArray(inner) ? inner.length : items.length);
         }
 
         setCommunities(items);
@@ -84,32 +111,209 @@ export default function CommunityPage() {
     [search],
   );
 
-  const fetchFeed = useCallback(async () => {
-    setFeedLoading(true);
+  const fetchFeed = useCallback(async (newOffset = 0, append = false) => {
+    if (append) setFeedLoadingMore(true);
+    else setFeedLoading(true);
     try {
-      const res = await apiClient.get('/v1/threads/feed/');
+      const res = await communitiesApi.threadFeed({ limit: FEED_LIMIT, offset: newOffset });
+      const data = res.data;
+      let items = [];
+      let count = 0;
+      if (Array.isArray(data)) {
+        items = data;
+        count = data.length;
+      } else if (data?.results) {
+        items = data.results;
+        count = data.count ?? data.results.length;
+      } else if (data?.data?.threads) {
+        items = data.data.threads;
+        count = data.data.total ?? data.data.count ?? data.data.threads.length;
+      }
+      else if (data?.data) {
+        items = Array.isArray(data.data) ? data.data : (data.data.results || data.data.threads || []);
+        count = data.count ?? data.data?.count ?? items.length;
+      }
+      setFeedThreads((prev) => (append ? [...prev, ...items] : items));
+      setFeedOffset(newOffset);
+      setFeedTotal((prev) => count || (append ? prev : items.length));
+    } catch {
+      if (!append) setFeedThreads([]);
+    } finally {
+      if (append) setFeedLoadingMore(false);
+      else setFeedLoading(false);
+    }
+  }, []);
+
+  const fetchComposerCommunities = useCallback(async () => {
+    try {
+      const res = await communitiesApi.list({ limit: 100, offset: 0 });
+      const items = extractCollection(res.data);
+      const joined = items.filter((item) => isJoinedCommunity(item));
+      // Prioritaskan komunitas yang diikuti user; fallback ke list umum jika field join tidak tersedia.
+      setComposerCommunities(joined.length > 0 ? joined : items);
+    } catch {
+      // keep existing communities as-is
+    }
+  }, []);
+
+  async function handleFeedPost(payload) {
+    const fallbackCommunity = composerCommunities.find((item) => isJoinedCommunity(item)) || composerCommunities[0];
+    const communityId = payload.community_id || fallbackCommunity?.id;
+    if (!communityId) {
+      toast.error('Kamu belum join komunitas manapun. Gabung komunitas dulu ya.');
+      return;
+    }
+    try {
+      await communitiesApi.createThread(communityId, {
+        title: payload.content?.trim()?.slice(0, 64),
+        content: payload.content,
+        images: payload.images || [],
+      });
+      toast.success('Thread berhasil dipost.');
+      fetchFeed(0, false);
+    } catch (err) {
+      toast.error(err?.response?.data?.error?.message || 'Gagal posting thread.');
+      throw err;
+    }
+  }
+
+  async function handleLikeThread(thread) {
+    const threadId = thread?.id;
+    if (!threadId || togglingLikeId) return;
+    setTogglingLikeId(threadId);
+    const alreadyLiked = Boolean(thread.is_liked);
+    try {
+      if (alreadyLiked) {
+        await communitiesApi.unlikeThread(threadId);
+      } else {
+        await communitiesApi.likeThread(threadId);
+      }
+      setFeedThreads((prev) =>
+        prev.map((item) => {
+          if (item.id !== threadId) return item;
+          const count = item.like_count ?? item.likes_count ?? 0;
+          return {
+            ...item,
+            is_liked: !alreadyLiked,
+            like_count: Math.max(0, count + (alreadyLiked ? -1 : 1)),
+          };
+        }),
+      );
+    } catch {
+      toast.error('Gagal memperbarui like thread.');
+    } finally {
+      setTogglingLikeId(null);
+    }
+  }
+
+  async function handleDeleteThread(thread) {
+    const threadId = thread?.id;
+    if (!threadId || deletingThreadId) return;
+    const confirmed = window.confirm('Hapus thread ini? Tindakan ini tidak bisa dibatalkan.');
+    if (!confirmed) return;
+
+    setDeletingThreadId(threadId);
+    try {
+      await communitiesApi.removeThread(threadId);
+      setFeedThreads((prev) => prev.filter((item) => item.id !== threadId));
+      setFeedTotal((prev) => Math.max(0, prev - 1));
+      toast.success('Thread berhasil dihapus.');
+    } catch {
+      toast.error('Gagal menghapus thread.');
+    } finally {
+      setDeletingThreadId(null);
+    }
+  }
+
+  async function loadThreadComments(thread) {
+    if (!thread?.id) return;
+    setCommentsLoading(true);
+    try {
+      const res = await communitiesApi.threadComments(thread.id, { limit: 50, offset: 0 });
       const data = res.data;
       let items = [];
       if (Array.isArray(data)) items = data;
-      else if (data?.results) items = data.results;
-      else if (data?.data) {
-        items = Array.isArray(data.data) ? data.data : (data.data.results || []);
-      }
-      setFeedThreads(items);
+      else if (Array.isArray(data?.results)) items = data.results;
+      else if (Array.isArray(data?.data)) items = data.data;
+      else if (Array.isArray(data?.data?.results)) items = data.data.results;
+      setComments(items);
     } catch {
-      setFeedThreads([]);
+      setComments([]);
+      toast.error('Gagal memuat komentar.');
     } finally {
-      setFeedLoading(false);
+      setCommentsLoading(false);
     }
-  }, []);
+  }
+
+  function handleOpenComments(thread) {
+    setActiveThread(thread);
+    setCommentsOpen(true);
+    loadThreadComments(thread);
+  }
+
+  async function handleSubmitComment(thread, content) {
+    setCommentSubmitting(true);
+    try {
+      await communitiesApi.createThreadComment(thread.id, { content });
+      await loadThreadComments(thread);
+      setFeedThreads((prev) =>
+        prev.map((item) => (item.id === thread.id
+          ? { ...item, comment_count: (item.comment_count ?? item.comments_count ?? 0) + 1 }
+          : item)),
+      );
+      toast.success('Komentar berhasil dikirim.');
+    } catch {
+      toast.error('Gagal mengirim komentar.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
+
+  async function handleLikeComment(comment) {
+    if (!comment?.id || likingCommentId) return;
+    setLikingCommentId(comment.id);
+    try {
+      await communitiesApi.likeComment(comment.id);
+      setComments((prev) =>
+        prev.map((item) => (item.id === comment.id
+          ? { ...item, is_liked: true, like_count: (item.like_count ?? item.likes_count ?? 0) + 1 }
+          : item)),
+      );
+    } catch {
+      toast.error('Gagal like komentar.');
+    } finally {
+      setLikingCommentId(null);
+    }
+  }
 
   useEffect(() => {
     if (tab === 'communities') {
       fetchCommunities(0);
     } else if (tab === 'threads') {
-      fetchFeed();
+      fetchFeed(0, false);
+      fetchComposerCommunities();
     }
-  }, [tab, fetchCommunities, fetchFeed]);
+  }, [tab, fetchCommunities, fetchFeed, fetchComposerCommunities]);
+
+  useEffect(() => {
+    if (tab !== 'threads') return;
+    if (!loadMoreRef.current) return;
+    const hasMoreFeed = feedThreads.length < feedTotal;
+    if (!hasMoreFeed) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+        if (feedLoading || feedLoadingMore) return;
+        fetchFeed(feedOffset + FEED_LIMIT, true);
+      },
+      { rootMargin: '160px 0px' },
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [tab, feedThreads.length, feedTotal, feedLoading, feedLoadingMore, feedOffset, fetchFeed]);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -163,12 +367,8 @@ export default function CommunityPage() {
         {tab === 'threads' ? (
           <div className='space-y-5'>
             <ThreadComposer
-              communities={communities}
-              communityName='Pilih Komunitas...'
-              onPost={async (body) => {
-                // Post logic to global feed not fully supported unless community selected
-                // Requires UI for community selection, but structure is ready.
-              }}
+              communities={composerCommunities}
+              onPost={handleFeedPost}
             />
             {feedLoading ? (
               <div className='flex items-center justify-center py-12'>
@@ -185,9 +385,22 @@ export default function CommunityPage() {
                   key={thread.id}
                   thread={thread}
                   communityName={thread.community?.name || thread.community_name}
+                  communityId={thread.community?.id || thread.community_id}
+                  isLiked={Boolean(thread.is_liked)}
+                  isLiking={togglingLikeId === thread.id}
+                  onLike={handleLikeThread}
+                  onOpenComments={handleOpenComments}
+                  onDelete={handleDeleteThread}
+                  canDelete={String(thread.author?.id ?? thread.user?.id) === String(user?.id)}
+                  isDeleting={deletingThreadId === thread.id}
                 />
               ))
             )}
+            {!feedLoading && feedThreads.length > 0 && feedThreads.length < feedTotal ? (
+              <div ref={loadMoreRef} className='flex items-center justify-center py-2'>
+                {feedLoadingMore ? <Loader2 className='size-4 animate-spin text-primary-container' /> : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -276,6 +489,17 @@ export default function CommunityPage() {
           </>
         ) : null}
       </main>
+      <ThreadCommentsDialog
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
+        thread={activeThread}
+        comments={comments}
+        loading={commentsLoading}
+        submitting={commentSubmitting}
+        likingCommentId={likingCommentId}
+        onSubmitComment={handleSubmitComment}
+        onLikeComment={handleLikeComment}
+      />
     </div>
   );
 }
