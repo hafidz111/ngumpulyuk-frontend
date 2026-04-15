@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Clock, Heart, MessageCircle, Trash2 } from 'lucide-react';
+import { Clock, Heart, MessageCircle, Share2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Card } from '@/presentation/components/ui/card';
 import { Avatar, AvatarImage } from '@/presentation/components/ui/avatar';
@@ -98,6 +99,24 @@ export function ThreadCard({
       hash |= 0;
     }
     return palette[Math.abs(hash) % palette.length];
+  }
+
+  async function handleShareThread() {
+    const threadUrl = `${window.location.origin}/community?thread=${thread.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Thread dari ${authorDisplayName()}`,
+          text: (thread.content ?? thread.body ?? '').slice(0, 120),
+          url: threadUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(threadUrl);
+      toast.success('Link thread berhasil disalin.');
+    } catch {
+      toast.error('Gagal membagikan thread.');
+    }
   }
 
   return (
@@ -206,6 +225,14 @@ export function ThreadCard({
         >
           <MessageCircle className='size-4' />
           {commentCount}
+        </button>
+        <button
+          type='button'
+          onClick={() => void handleShareThread()}
+          className='inline-flex items-center gap-1.5 text-sm hover:text-foreground transition-colors'
+        >
+          <Share2 className='size-4' />
+          Share
         </button>
         {canDelete ? (
           <button

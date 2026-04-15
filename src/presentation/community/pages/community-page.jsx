@@ -53,6 +53,23 @@ function isJoinedCommunity(item = {}) {
   );
 }
 
+function isThreadOwnedByUser(thread, user) {
+  const author = thread?.author ?? thread?.user ?? {};
+  const threadUserId = String(author.id ?? author.user_id ?? '').trim();
+  const currentUserId = String(user?.id ?? '').trim();
+  if (threadUserId && currentUserId && threadUserId === currentUserId) return true;
+
+  const threadEmail = String(author.email ?? author.user_email ?? '').trim().toLowerCase();
+  const currentEmail = String(user?.email ?? '').trim().toLowerCase();
+  if (threadEmail && currentEmail && threadEmail === currentEmail) return true;
+
+  const threadUsername = String(author.username ?? '').trim().toLowerCase();
+  const currentUsername = String(user?.username ?? '').trim().toLowerCase();
+  if (threadUsername && currentUsername && threadUsername === currentUsername) return true;
+
+  return false;
+}
+
 export default function CommunityPage() {
   const { isAuthenticated, user } = useAuth();
   const [tab, setTab] = useState('threads');
@@ -394,7 +411,7 @@ export default function CommunityPage() {
                   onLike={handleLikeThread}
                   onOpenComments={handleOpenComments}
                   onDelete={handleDeleteThread}
-                  canDelete={String(thread.author?.id ?? thread.user?.id) === String(user?.id)}
+                  canDelete={isThreadOwnedByUser(thread, user)}
                   isDeleting={deletingThreadId === thread.id}
                 />
               ))
