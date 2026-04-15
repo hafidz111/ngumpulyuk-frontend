@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { getAuthErrorMessage, isApiErrorCode } from '@/application/auth/auth-error';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { SignupForm } from '../../components/signup-form';
 import { ROUTES } from '../../../shared/config/routes';
@@ -46,6 +46,10 @@ export default function RegisterPage() {
       );
       navigate(ROUTES.verifyEmail, { replace: true });
     } catch (err) {
+      if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_EXISTS'])) {
+        setSubmitError('Email sudah terdaftar. Silakan login atau gunakan email lain.');
+        return;
+      }
       setSubmitError(getAuthErrorMessage(err, 'Pendaftaran gagal.'));
     } finally {
       setIsSubmitting(false);

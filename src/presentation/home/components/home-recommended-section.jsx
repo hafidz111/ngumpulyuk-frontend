@@ -7,10 +7,9 @@ import { Card, CardContent } from '@/presentation/components/ui/card';
 import { ROUTES } from '@/shared/config/routes';
 import { cn } from '@/lib/utils';
 import { eventsApi } from '@/infrastructure/events/events-api';
-import { usersApi } from '@/infrastructure/users/users-api';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 
-export function HomeRecommendedSection() {
+export function HomeRecommendedSection({ activeEventIds = new Set() }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,17 +26,9 @@ export function HomeRecommendedSection() {
           const inner = data.data;
           items = Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
         }
-        let joinedIds = new Set();
-        try {
-          const joinedIdsRes = await usersApi.joinedEventIds();
-          const joinedPayload = joinedIdsRes.data?.data ?? joinedIdsRes.data;
-          joinedIds = new Set((joinedPayload?.event_ids || []).map((id) => String(id)));
-        } catch {
-          joinedIds = new Set();
-        }
         const merged = items.map((event) => ({
           ...event,
-          is_joined: Boolean(event.is_joined || joinedIds.has(String(event.id))),
+          is_joined: Boolean(event.is_joined || activeEventIds.has(String(event.id))),
         }));
         if (!cancelled) setEvents(merged.slice(0, 6));
       } catch {
@@ -48,7 +39,7 @@ export function HomeRecommendedSection() {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeEventIds]);
 
   return (
     <section className='space-y-4'>

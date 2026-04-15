@@ -45,6 +45,9 @@ const CommunityCreatePage = lazy(
 const CommunityDetailPage = lazy(
   () => import('../presentation/community/pages/community-detail-page.jsx'),
 );
+const ThreadDetailPage = lazy(
+  () => import('../presentation/community/pages/thread-detail-page.jsx'),
+);
 const ComingSoonPage = lazy(
   () => import('../presentation/coming-soon/coming-soon-page.jsx'),
 );
@@ -135,6 +138,10 @@ const router = createBrowserRouter([
   {
     path: ROUTES.communityDetail,
     element: suspense(<CommunityDetailPage />),
+  },
+  {
+    path: ROUTES.threadDetail,
+    element: suspense(<ThreadDetailPage />),
   },
   {
     path: ROUTES.map,

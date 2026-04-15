@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 import { ROUTES } from '@/shared/config/routes';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
+import { usersApi } from '@/infrastructure/users/users-api';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
@@ -53,25 +54,32 @@ function isJoinedCommunity(item = {}) {
   );
 }
 
-function isThreadOwnedByUser(thread, user) {
-  const author = thread?.author ?? thread?.user ?? {};
-  const threadUserId = String(author.id ?? author.user_id ?? '').trim();
-  const currentUserId = String(user?.id ?? '').trim();
-  if (threadUserId && currentUserId && threadUserId === currentUserId) return true;
+function mapParticipationSummary(payload) {
+  const data = payload?.data ?? payload;
+  const activeEventsRaw = Array.isArray(data?.active_events) ? data.active_events : [];
+  const joinedCommunitiesRaw = Array.isArray(data?.joined_communities)
+    ? data.joined_communities
+    : [];
 
-  const threadEmail = String(author.email ?? author.user_email ?? '').trim().toLowerCase();
-  const currentEmail = String(user?.email ?? '').trim().toLowerCase();
-  if (threadEmail && currentEmail && threadEmail === currentEmail) return true;
+  const events = activeEventsRaw
+    .map((item) => ({
+      id: String(item?.id ?? ''),
+      title: String(item?.title ?? 'Event'),
+    }))
+    .filter((item) => item.id);
 
-  const threadUsername = String(author.username ?? '').trim().toLowerCase();
-  const currentUsername = String(user?.username ?? '').trim().toLowerCase();
-  if (threadUsername && currentUsername && threadUsername === currentUsername) return true;
+  const communities = joinedCommunitiesRaw
+    .map((item) => ({
+      id: String(item?.id ?? ''),
+      name: String(item?.title ?? item?.name ?? 'Community'),
+    }))
+    .filter((item) => item.id);
 
-  return false;
+  return { events, communities };
 }
 
 export default function CommunityPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [tab, setTab] = useState('threads');
 
   const [feedThreads, setFeedThreads] = useState([]);
@@ -91,6 +99,7 @@ export default function CommunityPage() {
 
   const [communities, setCommunities] = useState([]);
   const [composerCommunities, setComposerCommunities] = useState([]);
+  const [composerEvents, setComposerEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
@@ -161,15 +170,15 @@ export default function CommunityPage() {
     }
   }, []);
 
-  const fetchComposerCommunities = useCallback(async () => {
+  const fetchComposerParticipation = useCallback(async () => {
     try {
-      const res = await communitiesApi.list({ limit: 100, offset: 0 });
-      const items = extractCollection(res.data);
-      const joined = items.filter((item) => isJoinedCommunity(item));
-      // Prioritaskan komunitas yang diikuti user; fallback ke list umum jika field join tidak tersedia.
-      setComposerCommunities(joined.length > 0 ? joined : items);
+      const res = await usersApi.participationSummary();
+      const { communities, events } = mapParticipationSummary(res.data);
+      setComposerCommunities(communities);
+      setComposerEvents(events);
     } catch {
-      // keep existing communities as-is
+      setComposerCommunities([]);
+      setComposerEvents([]);
     }
   }, []);
 
@@ -311,9 +320,9 @@ export default function CommunityPage() {
       fetchCommunities(0);
     } else if (tab === 'threads') {
       fetchFeed(0, false);
-      fetchComposerCommunities();
+      fetchComposerParticipation();
     }
-  }, [tab, fetchCommunities, fetchFeed, fetchComposerCommunities]);
+  }, [tab, fetchCommunities, fetchFeed, fetchComposerParticipation]);
 
   useEffect(() => {
     if (tab !== 'threads') return;
@@ -388,6 +397,7 @@ export default function CommunityPage() {
           <div className='space-y-5'>
             <ThreadComposer
               communities={composerCommunities}
+              events={composerEvents}
               onPost={handleFeedPost}
             />
             {feedLoading ? (
@@ -411,7 +421,7 @@ export default function CommunityPage() {
                   onLike={handleLikeThread}
                   onOpenComments={handleOpenComments}
                   onDelete={handleDeleteThread}
-                  canDelete={isThreadOwnedByUser(thread, user)}
+                  canDelete={Boolean(thread.can_delete)}
                   isDeleting={deletingThreadId === thread.id}
                 />
               ))

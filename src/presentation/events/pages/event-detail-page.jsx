@@ -21,7 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
 import { eventsApi } from '@/infrastructure/events/events-api';
-import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { getAuthErrorMessage, isApiErrorCode } from '@/application/auth/auth-error';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -172,6 +172,18 @@ export default function EventDetailPage() {
       toast.success('Berhasil bergabung! 🎉');
       await Promise.all([loadEvent(), loadParticipants()]);
     } catch (err) {
+      if (isApiErrorCode(err, ['ALREADY_JOINED'])) {
+        toast.info('Kamu sudah bergabung di event ini.');
+        return;
+      }
+      if (isApiErrorCode(err, ['EVENT_FULL'])) {
+        toast.error('Event sudah penuh.');
+        return;
+      }
+      if (isApiErrorCode(err, ['REGISTRATION_CLOSED'])) {
+        toast.error('Pendaftaran event sudah ditutup.');
+        return;
+      }
       toast.error(getAuthErrorMessage(err, 'Gagal bergabung.'));
     } finally {
       setActionLoading('');
@@ -185,6 +197,10 @@ export default function EventDetailPage() {
       toast.success('Kamu telah keluar dari event.');
       await Promise.all([loadEvent(), loadParticipants()]);
     } catch (err) {
+      if (isApiErrorCode(err, ['CONFLICT', 'NOT_PARTICIPANT'])) {
+        toast.info('Kamu belum terdaftar sebagai peserta event ini.');
+        return;
+      }
       toast.error(getAuthErrorMessage(err, 'Gagal keluar dari event.'));
     } finally {
       setActionLoading('');

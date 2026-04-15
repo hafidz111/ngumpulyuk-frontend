@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { displayNameFromEmail } from '@/shared/lib/user-display-name';
 import { authApi } from '@/infrastructure/auth/auth-api';
+import { usersApi } from '@/infrastructure/users/users-api';
 import {
   clearAllAuthStorage,
   setAccessToken,
@@ -42,7 +43,15 @@ function persistUser(user) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-function buildUserState({ email, fullName, onboardingCompleted }) {
+function buildUserState({
+  userId,
+  username,
+  email,
+  fullName,
+  onboardingCompleted,
+}) {
+  const id = String(userId ?? '').trim();
+  const un = String(username ?? '').trim();
   const e = String(email ?? '').trim();
   const fn = String(fullName ?? '').trim();
   const displayName = fn || displayNameFromEmail(e);
@@ -51,6 +60,8 @@ function buildUserState({ email, fullName, onboardingCompleted }) {
       ? onboardingCompleted
       : readOnboardedForEmail(e);
   return {
+    id,
+    username: un,
     email: e,
     fullName: fn,
     displayName,
@@ -71,6 +82,10 @@ function getTokenExpDate(token) {
   return null;
 }
 
+function extractPayload(payload) {
+  return payload?.data ?? payload;
+}
+
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
     Boolean(getAccessToken()),
@@ -80,6 +95,8 @@ export function AuthProvider({ children }) {
     if (!token) return null;
     return (
       loadStoredUser() ?? {
+        id: '',
+        username: '',
         email: '',
         fullName: '',
         displayName: 'Pengguna',
@@ -88,18 +105,58 @@ export function AuthProvider({ children }) {
     );
   });
 
+  const hydrateUserProfile = useCallback(async () => {
+    try {
+      const res = await usersApi.getMe();
+      const data = extractPayload(res.data);
+      if (!data || typeof data !== 'object') return;
+      setUser((current) => {
+        if (!current) return current;
+        const next = {
+          ...current,
+          id: String(data.id ?? current.id ?? '').trim(),
+          username: String(data.username ?? current.username ?? '').trim(),
+          email: String(data.email ?? current.email ?? '').trim(),
+          fullName: String(data.full_name ?? current.fullName ?? '').trim(),
+          displayName:
+            String(data.full_name ?? '').trim() ||
+            current.displayName ||
+            displayNameFromEmail(String(data.email ?? current.email ?? '').trim()),
+          isOnboarded:
+            typeof data.onboarding_completed === 'boolean'
+              ? data.onboarding_completed
+              : current.isOnboarded,
+        };
+        persistUser(next);
+        return next;
+      });
+    } catch {
+      // Ignore hydration errors, auth session still valid.
+    }
+  }, []);
+
   /**
    * Sets session after successful login (or verify-email if API returns tokens).
    * @param {{
    *   access: string | null;
    *   refresh?: string | null;
+   *   userId?: string;
+   *   username?: string;
    *   email: string;
    *   fullName?: string;
    *   onboardingCompleted?: boolean | null;
    * }} payload
    */
   const setSession = useCallback((payload) => {
-    const { access, refresh, email, fullName, onboardingCompleted } = payload;
+    const {
+      access,
+      refresh,
+      userId,
+      username,
+      email,
+      fullName,
+      onboardingCompleted,
+    } = payload;
     if (access) setAccessToken(access);
     if (refresh !== undefined && refresh !== null) setRefreshToken(refresh);
     const e = String(email ?? '').trim();
@@ -111,11 +168,18 @@ export function AuthProvider({ children }) {
         localStorage.removeItem(key);
       }
     }
-    const next = buildUserState({ email, fullName, onboardingCompleted });
+    const next = buildUserState({
+      userId,
+      username,
+      email,
+      fullName,
+      onboardingCompleted,
+    });
     persistUser(next);
     setUser(next);
     setIsAuthenticated(true);
-  }, []);
+    void hydrateUserProfile();
+  }, [hydrateUserProfile]);
 
   const completeOnboarding = useCallback(() => {
     setUser((current) => {
@@ -129,6 +193,12 @@ export function AuthProvider({ children }) {
       return updated;
     });
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    if (user.id && user.username) return;
+    void hydrateUserProfile();
+  }, [isAuthenticated, user, hydrateUserProfile]);
 
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();

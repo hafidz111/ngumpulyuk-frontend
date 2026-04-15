@@ -56,3 +56,45 @@ export function getAuthErrorMessage(
 
   return fallback;
 }
+
+/**
+ * @param {unknown} error
+ * @returns {number | null}
+ */
+export function getApiErrorStatus(error) {
+  const err = /** @type {{ response?: { status?: number } } | null} */ (error);
+  return typeof err?.response?.status === 'number' ? err.response.status : null;
+}
+
+/**
+ * @param {unknown} error
+ * @returns {string | null}
+ */
+export function getApiErrorCode(error) {
+  const err = /** @type {{ response?: { data?: unknown } } | null} */ (error);
+  const data = err?.response?.data;
+  if (data && typeof data === 'object') {
+    const d = /** @type {Record<string, unknown>} */ (data);
+    if (d.error && typeof d.error === 'object') {
+      const nested = /** @type {Record<string, unknown>} */ (d.error);
+      if (typeof nested.code === 'string' && nested.code.trim()) {
+        return nested.code.trim();
+      }
+    }
+    if (typeof d.code === 'string' && d.code.trim()) {
+      return d.code.trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {unknown} error
+ * @param {string[]} codes
+ * @returns {boolean}
+ */
+export function isApiErrorCode(error, codes) {
+  const code = getApiErrorCode(error);
+  if (!code) return false;
+  return codes.includes(code);
+}

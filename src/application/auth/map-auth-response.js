@@ -4,6 +4,8 @@
  * @returns {{
  *   access: string | null;
  *   refresh: string | null;
+ *   userId: string;
+ *   username: string;
  *   email: string;
  *   fullName: string;
  *   onboardingCompleted: boolean | null;
@@ -35,6 +37,8 @@ export function mapLoginResponse(data) {
       ? /** @type {Record<string, unknown>} */ (root.user)
       : null;
 
+  const userId = String(userObj?.id ?? root.user_id ?? root.id ?? '').trim();
+  const username = String(userObj?.username ?? root.username ?? '').trim();
   const email = String(userObj?.email ?? root.email ?? '').trim();
 
   const fullName = String(userObj?.full_name ?? root.full_name ?? '').trim();
@@ -46,5 +50,13 @@ export function mapLoginResponse(data) {
     onboardingCompleted = root.onboarding_completed;
   }
 
-  return { access, refresh, email, fullName, onboardingCompleted };
+  return {
+    access,
+    refresh,
+    userId,
+    username,
+    email,
+    fullName,
+    onboardingCompleted,
+  };
 }

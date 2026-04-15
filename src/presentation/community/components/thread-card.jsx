@@ -102,7 +102,7 @@ export function ThreadCard({
   }
 
   async function handleShareThread() {
-    const threadUrl = `${window.location.origin}/community?thread=${thread.id}`;
+    const threadUrl = `${window.location.origin}/threads/${thread.id}`;
     try {
       if (navigator.share) {
         await navigator.share({
@@ -112,9 +112,28 @@ export function ThreadCard({
         });
         return;
       }
-      await navigator.clipboard.writeText(threadUrl);
-      toast.success('Link thread berhasil disalin.');
-    } catch {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(threadUrl);
+        toast.success('Link thread berhasil disalin.');
+        return;
+      }
+      window.prompt('Salin link thread berikut:', threadUrl);
+      toast.success('Link thread siap dibagikan.');
+    } catch (err) {
+      // User canceled native share; no need to show error toast.
+      if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(threadUrl);
+          toast.success('Link thread berhasil disalin.');
+          return;
+        } catch {
+          /* continue to prompt fallback */
+        }
+      }
+      window.prompt('Salin link thread berikut:', threadUrl);
       toast.error('Gagal membagikan thread.');
     }
   }

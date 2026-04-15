@@ -54,6 +54,8 @@ export function useGoogleAuthSubmit() {
         setSession({
           access: mapped.access,
           refresh: mapped.refresh,
+          userId: mapped.userId,
+          username: mapped.username,
           email: resolvedEmail,
           fullName: mapped.fullName,
           onboardingCompleted: mapped.onboardingCompleted,

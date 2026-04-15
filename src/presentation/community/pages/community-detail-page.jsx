@@ -39,23 +39,6 @@ function extractCollection(payload) {
   return [];
 }
 
-function isThreadOwnedByUser(thread, user) {
-  const author = thread?.author ?? thread?.user ?? {};
-  const threadUserId = String(author.id ?? author.user_id ?? '').trim();
-  const currentUserId = String(user?.id ?? '').trim();
-  if (threadUserId && currentUserId && threadUserId === currentUserId) return true;
-
-  const threadEmail = String(author.email ?? author.user_email ?? '').trim().toLowerCase();
-  const currentEmail = String(user?.email ?? '').trim().toLowerCase();
-  if (threadEmail && currentEmail && threadEmail === currentEmail) return true;
-
-  const threadUsername = String(author.username ?? '').trim().toLowerCase();
-  const currentUsername = String(user?.username ?? '').trim().toLowerCase();
-  if (threadUsername && currentUsername && threadUsername === currentUsername) return true;
-
-  return false;
-}
-
 export default function CommunityDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -538,9 +521,7 @@ export default function CommunityDetailPage() {
                 onLike={handleLikeThread}
                 onOpenComments={handleOpenComments}
                 onDelete={handleDeleteThread}
-                canDelete={
-                  isAdmin || isThreadOwnedByUser(t, user)
-                }
+                canDelete={Boolean(t.can_delete ?? isAdmin)}
                 isDeleting={deletingThreadId === t.id}
               />
             ))

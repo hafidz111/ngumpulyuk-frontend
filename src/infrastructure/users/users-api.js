@@ -36,4 +36,8 @@ export const usersApi = {
   joinedEventIds() {
     return apiClient.get('/v1/users/me/joined-events/ids');
   },
+
+  participationSummary() {
+    return apiClient.get('/v1/users/me/participation-summary/');
+  },
 };

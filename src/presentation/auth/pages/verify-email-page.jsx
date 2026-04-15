@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { getAuthErrorMessage, isApiErrorCode } from '@/application/auth/auth-error';
 import { mapLoginResponse } from '@/application/auth/map-auth-response';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
@@ -66,6 +66,10 @@ export default function VerifyEmailPage() {
       toast.success('Kode verifikasi dikirim ke email kamu.', { duration: 4000 });
       setCooldownSec(RESEND_COOLDOWN_SEC);
     } catch (err) {
+      if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_VERIFIED'])) {
+        setResendError('Email ini sudah terverifikasi. Silakan login.');
+        return;
+      }
       setResendError(getAuthErrorMessage(err, 'Gagal mengirim ulang kode.'));
     } finally {
       setIsResending(false);
@@ -93,6 +97,8 @@ export default function VerifyEmailPage() {
         setSession({
           access: mapped.access,
           refresh: mapped.refresh,
+          userId: mapped.userId,
+          username: mapped.username,
           email: mapped.email,
           fullName: mapped.fullName,
           onboardingCompleted: mapped.onboardingCompleted,
@@ -118,6 +124,15 @@ export default function VerifyEmailPage() {
         state: { message: 'Email berhasil diverifikasi. Silakan masuk.' },
       });
     } catch (err) {
+      if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_VERIFIED'])) {
+        sessionStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
+        toast.info('Email sudah terverifikasi. Silakan login.');
+        navigate(ROUTES.login, {
+          replace: true,
+          state: { message: 'Email sudah terverifikasi. Silakan masuk.' },
+        });
+        return;
+      }
       setError(getAuthErrorMessage(err, 'Verifikasi gagal.'));
     } finally {
       setIsSubmitting(false);

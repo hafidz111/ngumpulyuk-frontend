@@ -152,7 +152,7 @@ const PAGE_SIZE = 10;
 
 function geolocationErrorMessage(error) {
   const locationSettingsHint =
-    'Cek izin lokasi browser dan Location Services di perangkat kamu (macOS, Windows, Android, atau iOS), lalu coba lagi.';
+    'Cek izin lokasi browser dan Location Services di perangkat kamu, lalu coba lagi.';
 
   if (!error || typeof error.code !== 'number') {
     return `Gagal mendapatkan lokasi saat ini. ${locationSettingsHint}`;
@@ -260,7 +260,7 @@ export default function EventMapPage() {
 
     run();
     return () => { cancelled = true; };
-  }, [allEvents.length]);
+  }, [allEvents]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -594,11 +594,25 @@ function EventMarker({ event, position, icon, isSelected, onSelect }) {
 
 function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
   const popupRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(9999);
 
   const CARD_W = 288;
   const MARKER_OFFSET = 50;
 
-  const containerWidth = popupRef.current?.parentElement?.offsetWidth ?? 9999;
+  useEffect(() => {
+    const parent = popupRef.current?.parentElement;
+    if (!parent) return undefined;
+
+    const updateWidth = () => {
+      setContainerWidth(parent.offsetWidth || 9999);
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(parent);
+    return () => observer.disconnect();
+  }, []);
+
   const fitsRight = pixel.x + MARKER_OFFSET + CARD_W + 12 < containerWidth;
 
   const left = fitsRight ? pixel.x + MARKER_OFFSET : pixel.x - CARD_W - MARKER_OFFSET;

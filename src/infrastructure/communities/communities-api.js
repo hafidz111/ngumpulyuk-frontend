@@ -121,6 +121,14 @@ export const communitiesApi = {
   },
 
   /**
+   * Get thread detail
+   * @param {string | number} threadId
+   */
+  getThreadById(threadId) {
+    return apiClient.get(`/v1/threads/${threadId}/`);
+  },
+
+  /**
    * Like a thread
    * @param {string | number} threadId
    */

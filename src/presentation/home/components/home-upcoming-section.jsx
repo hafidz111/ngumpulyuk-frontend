@@ -6,9 +6,8 @@ import { Card } from '@/presentation/components/ui/card';
 import { ROUTES } from '@/shared/config/routes';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 import { eventsApi } from '@/infrastructure/events/events-api';
-import { usersApi } from '@/infrastructure/users/users-api';
 
-export function HomeUpcomingSection() {
+export function HomeUpcomingSection({ activeEventIds = new Set() }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,17 +24,9 @@ export function HomeUpcomingSection() {
           const inner = data.data;
           items = Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
         }
-        let joinedIds = new Set();
-        try {
-          const joinedIdsRes = await usersApi.joinedEventIds();
-          const joinedPayload = joinedIdsRes.data?.data ?? joinedIdsRes.data;
-          joinedIds = new Set((joinedPayload?.event_ids || []).map((id) => String(id)));
-        } catch {
-          joinedIds = new Set();
-        }
         const merged = items.map((event) => ({
           ...event,
-          is_joined: Boolean(event.is_joined || joinedIds.has(String(event.id))),
+          is_joined: Boolean(event.is_joined || activeEventIds.has(String(event.id))),
         }));
         if (!cancelled) setEvents(merged.slice(0, 5));
       } catch {
@@ -46,7 +37,7 @@ export function HomeUpcomingSection() {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeEventIds]);
 
   return (
     <section className='space-y-4'>

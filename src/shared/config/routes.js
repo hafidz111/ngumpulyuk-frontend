@@ -14,6 +14,7 @@ export const ROUTES = {
   community: '/community',
   communityCreate: '/community/create',
   communityDetail: '/community/:id',
+  threadDetail: '/threads/:id',
   map: '/map',
   profile: '/profile',
   profileByUsername: '/profile/:username',
