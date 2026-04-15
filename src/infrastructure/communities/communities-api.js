@@ -77,6 +77,14 @@ export const communitiesApi = {
   },
 
   /**
+   * Create a thread in global feed (without specific community)
+   * @param {Record<string, unknown>} body — title, content, images, related_event_id?
+   */
+  createGlobalThread(body) {
+    return apiClient.post('/v1/threads/', body);
+  },
+
+  /**
    * Update member role in a community
    * @param {string | number} communityId
    * @param {string | number} userId

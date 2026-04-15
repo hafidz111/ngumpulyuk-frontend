@@ -157,18 +157,21 @@ export default function CommunityPage() {
   }, []);
 
   async function handleFeedPost(payload) {
-    const fallbackCommunity = composerCommunities.find((item) => isJoinedCommunity(item)) || composerCommunities[0];
-    const communityId = payload.community_id || fallbackCommunity?.id;
-    if (!communityId) {
-      toast.error('Kamu belum join komunitas manapun. Gabung komunitas dulu ya.');
-      return;
-    }
+    const communityId = payload.community_id;
     try {
-      await communitiesApi.createThread(communityId, {
+      const body = {
         title: payload.content?.trim()?.slice(0, 64),
         content: payload.content,
         images: payload.images || [],
-      });
+        ...(payload.related_event_id
+          ? { related_event_id: payload.related_event_id }
+          : {}),
+      };
+      if (communityId) {
+        await communitiesApi.createThread(communityId, body);
+      } else {
+        await communitiesApi.createGlobalThread(body);
+      }
       toast.success('Thread berhasil dipost.');
       fetchFeed(0, false);
     } catch (err) {

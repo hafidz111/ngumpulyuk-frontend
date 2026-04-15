@@ -121,7 +121,7 @@ export function ThreadComposer({
         ...(normalizedEvent ? { related_event_id: normalizedEvent } : {}),
       });
       setContent('');
-      setSelectedCommunity('optional');
+      setSelectedCommunity(autoSelectSingleCommunity && communities?.length === 1 ? String(communities[0].id) : 'optional');
       setSelectedEvent('');
       setImageFiles([]);
       setImagePreviews([]);
@@ -213,7 +213,7 @@ export function ThreadComposer({
             <div className='mt-1 flex items-center justify-between border-t border-border/40 pt-2'>
               <div className='inline-flex items-center gap-1 text-xs text-muted-foreground'>
                 <Sparkles className='size-3.5' />
-                Pilih komunitas opsional, sistem akan pakai default jika kosong.
+                Komunitas opsional, kamu tetap bisa post ke feed global.
               </div>
               <div>
                 <input
@@ -241,7 +241,7 @@ export function ThreadComposer({
                 onClick={() => {
                   setExpanded(false);
                   setContent('');
-                  setSelectedCommunity('optional');
+                  setSelectedCommunity(autoSelectSingleCommunity && communities?.length === 1 ? String(communities[0].id) : 'optional');
                   setSelectedEvent('');
                   setImageFiles([]);
                   setImagePreviews([]);
