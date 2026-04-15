@@ -63,6 +63,9 @@ const NotFoundPage = lazy(
 const HttpErrorPage = lazy(
   () => import('../presentation/error-pages/http-error-page.jsx'),
 );
+const MaintenancePage = lazy(
+  () => import('../presentation/error-pages/maintenance-page.jsx'),
+);
 
 function RouteFallback() {
   return (
@@ -158,6 +161,10 @@ const router = createBrowserRouter([
   {
     path: ROUTES.notFound,
     element: suspense(<NotFoundPage />),
+  },
+  {
+    path: ROUTES.maintenance,
+    element: suspense(<MaintenancePage />),
   },
   {
     path: '/error/:code',

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { API_BASE_URL } from '@/shared/config/env';
+import { ROUTES } from '@/shared/config/routes';
 import {
   clearAllAuthStorage,
   getAccessToken,
@@ -47,6 +48,17 @@ apiClient.interceptors.response.use(
     const url = String(originalRequest.url ?? '');
     const isLogoutRequest = url.includes('/auth/logout');
     const isRefreshRequest = url.includes('/auth/refresh');
+
+    // Saat backend sedang deploy/down, request bisa gagal tanpa status HTTP.
+    if (!error.response) {
+      redirectToMaintenance();
+      return Promise.reject(error);
+    }
+
+    if (status === 502 || status === 503) {
+      redirectToMaintenance();
+      return Promise.reject(error);
+    }
 
     if (status >= 500) {
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/error/')) {
@@ -120,6 +132,14 @@ function forceLoginRedirect() {
     !window.location.pathname.startsWith(loginPath)
   ) {
     window.location.assign(`${window.location.origin}${loginPath}?session=expired`);
+  }
+}
+
+function redirectToMaintenance() {
+  if (typeof window === 'undefined') return;
+
+  if (window.location.pathname !== ROUTES.maintenance) {
+    window.location.assign(`${window.location.origin}${ROUTES.maintenance}`);
   }
 }
 
