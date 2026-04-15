@@ -2,8 +2,10 @@ import { format } from 'date-fns';
 
 import {
   AREA_OPTIONS,
+  ONBOARDING_ACTIVITIES,
   EVENT_TIME_OPTIONS,
 } from '@/presentation/onboarding/onboarding-data';
+import { toTitleCase } from '@/shared/lib/text-format';
 
 /** Maps slot waktu UI ke nilai `preferred_time` API. */
 const TIME_SLOT_TO_PREFERRED_TIME = {
@@ -33,10 +35,21 @@ export function mapOnboardingApiBody({
   locationAreaId,
   timeSlotIds,
 }) {
-  const interests = [
-    ...Array.from(selectedActivityIds),
-    ...customActivities,
-  ].map((s) => String(s).trim());
+  const activityLabelMap = new Map(
+    ONBOARDING_ACTIVITIES.map((item) => [item.id, item.label]),
+  );
+  const mappedPresetInterests = Array.from(selectedActivityIds).map(
+    (id) => activityLabelMap.get(id) || id,
+  );
+
+  const interests = Array.from(
+    new Map(
+      [...mappedPresetInterests, ...customActivities]
+        .map((raw) => toTitleCase(raw))
+        .filter(Boolean)
+        .map((label) => [label.toLowerCase(), label]),
+    ).values(),
+  );
 
   const areaLabel =
     AREA_OPTIONS.find((a) => a.id === locationAreaId)?.label ?? '';

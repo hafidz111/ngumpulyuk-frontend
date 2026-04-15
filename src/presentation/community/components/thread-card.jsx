@@ -3,6 +3,7 @@ import { Clock, Heart, MessageCircle, Trash2 } from 'lucide-react';
 
 import { Card } from '@/presentation/components/ui/card';
 import { Avatar, AvatarImage } from '@/presentation/components/ui/avatar';
+import { toTitleCase } from '@/shared/lib/text-format';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -17,6 +18,25 @@ function timeAgo(dateStr) {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days} hari lalu`;
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+}
+
+function pickPrimaryInterest(author, thread) {
+  const fromAuthorArray = Array.isArray(author?.interests)
+    ? author.interests
+    : [];
+  const fromAuthorSingle = author?.interest ? [author.interest] : [];
+  const fromThread = thread?.interest ? [thread.interest] : [];
+
+  const uniqueInterests = Array.from(
+    new Map(
+      [...fromAuthorArray, ...fromAuthorSingle, ...fromThread]
+        .map((value) => toTitleCase(value))
+        .filter(Boolean)
+        .map((value) => [value.toLowerCase(), value]),
+    ).values(),
+  );
+
+  return uniqueInterests[0] ?? null;
 }
 
 export function ThreadCard({
@@ -35,9 +55,7 @@ export function ThreadCard({
   const likeCount = thread.like_count ?? thread.likes_count ?? 0;
   const commentCount = thread.comment_count ?? thread.comments_count ?? 0;
   const imageList = Array.isArray(thread.images) ? thread.images : (thread.image ? [thread.image] : []);
-  const firstInterest = Array.isArray(author.interests)
-    ? author.interests[0]
-    : (author.interest || thread.interest || null);
+  const normalizedFirstInterest = pickPrimaryInterest(author, thread);
   const profilePath = author.username ? `/profile/${author.username}` : null;
 
   function authorDisplayName() {
@@ -124,9 +142,9 @@ export function ThreadCard({
               • {timeAgo(thread.created_at)}
             </span>
           </div>
-          {firstInterest ? (
+          {normalizedFirstInterest ? (
             <p className='mt-0.5 text-[11px] font-medium text-muted-foreground'>
-              {firstInterest}
+              {normalizedFirstInterest}
             </p>
           ) : null}
           {communityName ? (

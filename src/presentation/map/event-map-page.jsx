@@ -21,6 +21,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
@@ -149,6 +150,26 @@ function SyncMapState({ selectedEvent, setPopupPixel, onClose }) {
 
 const PAGE_SIZE = 10;
 
+function geolocationErrorMessage(error) {
+  const locationSettingsHint =
+    'Cek izin lokasi browser dan Location Services di perangkat kamu (macOS, Windows, Android, atau iOS), lalu coba lagi.';
+
+  if (!error || typeof error.code !== 'number') {
+    return `Gagal mendapatkan lokasi saat ini. ${locationSettingsHint}`;
+  }
+
+  if (error.code === 1) {
+    return `Izin lokasi ditolak. ${locationSettingsHint}`;
+  }
+  if (error.code === 2) {
+    return `Lokasi belum bisa ditentukan saat ini. ${locationSettingsHint}`;
+  }
+  if (error.code === 3) {
+    return `Permintaan lokasi melebihi batas waktu. ${locationSettingsHint}`;
+  }
+  return `Gagal mendapatkan lokasi saat ini. ${locationSettingsHint}`;
+}
+
 export default function EventMapPage() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -245,7 +266,9 @@ export default function EventMapPage() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-      () => { },
+      (error) => {
+        toast.error(geolocationErrorMessage(error), { duration: 5000 });
+      },
       { enableHighAccuracy: true, timeout: 8000 },
     );
   }, []);
@@ -299,7 +322,10 @@ export default function EventMapPage() {
         setUserPos([pos.coords.latitude, pos.coords.longitude]);
         setIsLocating(false);
       },
-      () => setIsLocating(false),
+      (error) => {
+        setIsLocating(false);
+        toast.error(geolocationErrorMessage(error), { duration: 5000 });
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }
