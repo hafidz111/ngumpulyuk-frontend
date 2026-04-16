@@ -60,6 +60,12 @@ const NotificationsPage = lazy(
 const NotificationsBlastPage = lazy(
   () => import('../presentation/notifications/pages/notifications-blast-page.jsx'),
 );
+const AdminChatMonitoringPage = lazy(
+  () => import('../presentation/chat/pages/admin-chat-monitoring-page.jsx'),
+);
+const AdminChatCorrectionsPage = lazy(
+  () => import('../presentation/chat/pages/admin-chat-corrections-page.jsx'),
+);
 const EventMapPage = lazy(
   () => import('../presentation/map/event-map-page.jsx'),
 );
@@ -167,6 +173,14 @@ const router = createBrowserRouter([
   {
     path: ROUTES.notificationsBlast,
     element: suspense(<NotificationsBlastPage />),
+  },
+  {
+    path: ROUTES.adminChatMonitoring,
+    element: suspense(<AdminChatMonitoringPage />),
+  },
+  {
+    path: ROUTES.adminChatCorrections,
+    element: suspense(<AdminChatCorrectionsPage />),
   },
   {
     path: ROUTES.profileByUsername,

@@ -21,6 +21,8 @@ export const ROUTES = {
   profileByUsername: '/profile/:username',
   notifications: '/notifications',
   notificationsBlast: '/notifications/blast',
+  adminChatMonitoring: '/admin/chat-monitoring',
+  adminChatCorrections: '/admin/chat-corrections',
   notFound: '/404',
   errorPattern: '/error/:code',
 };

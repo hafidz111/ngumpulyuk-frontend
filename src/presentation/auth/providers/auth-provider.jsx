@@ -10,6 +10,7 @@ import {
   getAccessToken,
   getRefreshToken,
 } from '@/infrastructure/http/token-storage';
+import { clearAllChatStorage } from '@/infrastructure/chat/chat-session-storage';
 import { unregisterPushDeviceIfAny } from '@/infrastructure/notifications/push-device';
 import { AuthContext } from '../context/auth-context';
 
@@ -215,6 +216,7 @@ export function AuthProvider({ children }) {
         /* ignore */
       }
       clearAllAuthStorage();
+      clearAllChatStorage();
       setIsAuthenticated(false);
       setUser(null);
     }

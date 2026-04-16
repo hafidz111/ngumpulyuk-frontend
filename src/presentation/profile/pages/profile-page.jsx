@@ -328,9 +328,17 @@ export default function ProfilePage() {
                 {!isPublicProfile ? (
                   <div className='flex flex-wrap items-center justify-end gap-2'>
                     {user?.isStaff ? (
-                      <Button asChild type='button' variant='outline' className='rounded-full'>
-                        <Link to={ROUTES.notificationsBlast}>Blast Notifikasi</Link>
-                      </Button>
+                      <>
+                        <Button asChild type='button' variant='outline' className='rounded-full'>
+                          <Link to={ROUTES.notificationsBlast}>Blast Notifikasi</Link>
+                        </Button>
+                        <Button asChild type='button' variant='outline' className='rounded-full'>
+                          <Link to={ROUTES.adminChatMonitoring}>Chat Monitoring</Link>
+                        </Button>
+                        <Button asChild type='button' variant='outline' className='rounded-full'>
+                          <Link to={ROUTES.adminChatCorrections}>Chat Corrections</Link>
+                        </Button>
+                      </>
                     ) : null}
                     <Button
                       type='button'
