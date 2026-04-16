@@ -1,3 +1,5 @@
+import { normalizeInterestForBlastPayload } from '@/application/users/normalize-interest-for-blast-payload';
+
 const BLAST_CONFIRMATION = 'BLAST_ALL_USERS';
 
 /**
@@ -14,6 +16,14 @@ export function buildNotificationBlastBody(input) {
   const userIds = rawUserIds
     .map((id) => String(id ?? '').trim())
     .filter(Boolean);
+  const rawInterests = Array.isArray(payload.interests) ? payload.interests : [];
+  const interests = [
+    ...new Set(
+      rawInterests
+        .map((id) => normalizeInterestForBlastPayload(id))
+        .filter(Boolean),
+    ),
+  ];
 
   const body = {
     title,
@@ -28,6 +38,11 @@ export function buildNotificationBlastBody(input) {
     body.all_users = true;
     body.confirm =
       String(payload.confirm ?? '').trim() || BLAST_CONFIRMATION;
+    return body;
+  }
+
+  if (interests.length > 0) {
+    body.interests = interests;
     return body;
   }
 

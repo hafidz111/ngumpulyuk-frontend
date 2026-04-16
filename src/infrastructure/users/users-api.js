@@ -20,6 +20,22 @@ export const usersApi = {
   },
 
   /**
+   * Staff/admin user lookup.
+   * @param {Record<string, string | number>} [params] e.g. search, limit, offset
+   */
+  search(params) {
+    return apiClient.get('/v1/users/', { params });
+  },
+
+  /**
+   * Interest taxonomy: ranked_interests (popularity) + interests fallback.
+   * GET /api/v1/users/interests/
+   */
+  interests() {
+    return apiClient.get('/v1/users/interests/');
+  },
+
+  /**
    * @param {Record<string, unknown>} body
    */
   updateMe(body) {

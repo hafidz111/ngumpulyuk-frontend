@@ -21,8 +21,7 @@ export default function MaintenancePage() {
           <p className='font-display text-5xl font-black text-primary'>503</p>
           <CardTitle className='text-xl'>Sedang maintenance</CardTitle>
           <CardDescription>
-            Backend sedang deploy atau pemeliharaan. Silakan coba lagi dalam beberapa
-            menit.
+            Sedang dalam pemeliharaan. Silakan coba lagi dalam beberapa menit.
           </CardDescription>
         </CardHeader>
         <CardContent className='text-center text-xs text-muted-foreground'>

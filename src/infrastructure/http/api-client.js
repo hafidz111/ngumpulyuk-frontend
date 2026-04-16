@@ -49,7 +49,6 @@ apiClient.interceptors.response.use(
     const isLogoutRequest = url.includes('/auth/logout');
     const isRefreshRequest = url.includes('/auth/refresh');
 
-    // Saat backend sedang deploy/down, request bisa gagal tanpa status HTTP.
     if (!error.response) {
       redirectToMaintenance();
       return Promise.reject(error);
@@ -61,7 +60,10 @@ apiClient.interceptors.response.use(
     }
 
     if (status >= 500) {
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/error/')) {
+      if (
+        typeof window !== 'undefined' &&
+        !window.location.pathname.startsWith('/error/')
+      ) {
         window.location.assign(`/error/${status}`);
       }
       return Promise.reject(error);
@@ -131,7 +133,9 @@ function forceLoginRedirect() {
     typeof window !== 'undefined' &&
     !window.location.pathname.startsWith(loginPath)
   ) {
-    window.location.assign(`${window.location.origin}${loginPath}?session=expired`);
+    window.location.assign(
+      `${window.location.origin}${loginPath}?session=expired`,
+    );
   }
 }
 
@@ -142,4 +146,3 @@ function redirectToMaintenance() {
     window.location.assign(`${window.location.origin}${ROUTES.maintenance}`);
   }
 }
-

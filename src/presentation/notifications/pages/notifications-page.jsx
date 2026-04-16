@@ -1,11 +1,20 @@
-import { useCallback } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { CheckCheck, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { CheckCheck, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/presentation/components/ui/pagination';
 import {
   Card,
   CardDescription,
@@ -36,8 +45,53 @@ function formatCreatedAt(iso) {
   }
 }
 
+function formatNotificationType(type) {
+  if (!type) return '';
+  if (type === 'admin_broadcast') return 'NgumpulYuk.id';
+  return type
+    .split('_')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * @param {number} currentPage 1-based
+ * @param {number} totalPages
+ * @returns {Array<{ type: 'page'; n: number } | { type: 'ellipsis'; key: string }>}
+ */
+function getVisiblePageNumbers(currentPage, totalPages) {
+  const out = [];
+  if (totalPages < 1) return out;
+  if (totalPages === 1) {
+    out.push({ type: 'page', n: 1 });
+    return out;
+  }
+  if (totalPages <= 9) {
+    for (let i = 1; i <= totalPages; i++) {
+      out.push({ type: 'page', n: i });
+    }
+    return out;
+  }
+
+  out.push({ type: 'page', n: 1 });
+  const start = Math.max(2, currentPage - 2);
+  const end = Math.min(totalPages - 1, currentPage + 2);
+  if (start > 2) {
+    out.push({ type: 'ellipsis', key: 'start' });
+  }
+  for (let i = start; i <= end; i++) {
+    out.push({ type: 'page', n: i });
+  }
+  if (end < totalPages - 1) {
+    out.push({ type: 'ellipsis', key: 'end' });
+  }
+  out.push({ type: 'page', n: totalPages });
+  return out;
+}
+
 export default function NotificationsPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const {
     items,
@@ -58,6 +112,24 @@ export default function NotificationsPage() {
     markOneRead,
     markAllRead,
   } = useNotificationsInbox(isAuthenticated);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageLimit));
+  const currentPage = Math.min(
+    totalPages,
+    Math.floor(offset / pageLimit) + 1,
+  );
+  const visiblePages = useMemo(
+    () => getVisiblePageNumbers(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
+
+  const goToPage = useCallback(
+    (page) => {
+      const p = Math.max(1, Math.min(totalPages, page));
+      setOffset((p - 1) * pageLimit);
+    },
+    [pageLimit, setOffset, totalPages],
+  );
 
   const handleOpen = useCallback(
     async (n) => {
@@ -104,23 +176,16 @@ export default function NotificationsPage() {
               {total > 0 ? ` · ${total} total` : ''}
             </p>
           </div>
-          <div className='flex items-center gap-2'>
-            {user?.isStaff ? (
-              <Button asChild type='button' variant='outline' className='h-11 rounded-full border-border/60 font-semibold'>
-                <Link to={ROUTES.notificationsBlast}>Blast Notifikasi</Link>
-              </Button>
-            ) : null}
-            <Button
-              type='button'
-              variant='outline'
-              className='h-11 shrink-0 rounded-full border-border/60 font-semibold'
-              disabled={loading || unreadCount === 0}
-              onClick={() => void handleMarkAll()}
-            >
-              <CheckCheck className='mr-2 size-4' aria-hidden />
-              Tandai semua dibaca
-            </Button>
-          </div>
+          <Button
+            type='button'
+            variant='outline'
+            className='h-11 shrink-0 rounded-full border-border/60 font-semibold'
+            disabled={loading || unreadCount === 0}
+            onClick={() => void handleMarkAll()}
+          >
+            <CheckCheck className='mr-2 size-4' aria-hidden />
+            Tandai semua dibaca
+          </Button>
         </div>
 
         <div className='mb-6 flex flex-col gap-3 sm:flex-row sm:items-center'>
@@ -182,14 +247,14 @@ export default function NotificationsPage() {
                     <p className='font-display text-base font-bold text-foreground'>
                       {n.title}
                     </p>
-                    <p className='mt-1 text-sm leading-relaxed text-muted-foreground'>
+                    <p className='mt-1 whitespace-pre-line text-sm leading-relaxed text-muted-foreground'>
                       {n.message}
                     </p>
                     <p className='mt-2 text-xs text-muted-foreground'>
                       {formatCreatedAt(n.createdAt)}
                       {n.type ? (
                         <span className='ml-2 rounded-full bg-muted px-2 py-0.5 font-medium text-foreground/80'>
-                          {n.type}
+                          {formatNotificationType(n.type)}
                         </span>
                       ) : null}
                     </p>
@@ -204,39 +269,61 @@ export default function NotificationsPage() {
         </ul>
 
         {items.length > 0 ? (
-          <div className='mt-8 flex items-center justify-between gap-4'>
-            <Button
-              type='button'
-              variant='outline'
-              className='rounded-full'
-              disabled={!hasPrev || loading}
-              onClick={() => setOffset((o) => Math.max(0, o - pageLimit))}
-            >
-              <ChevronLeft className='mr-1 size-4' aria-hidden />
-              Sebelumnya
-            </Button>
-            <span className='text-sm text-muted-foreground'>
-              {offset + 1}–{Math.min(offset + items.length, offset + pageLimit)} dari{' '}
-              {total}
-            </span>
-            <Button
-              type='button'
-              variant='outline'
-              className='rounded-full'
-              disabled={!hasMore || loading}
-              onClick={() => setOffset((o) => o + pageLimit)}
-            >
-              Berikutnya
-              <ChevronRight className='ml-1 size-4' aria-hidden />
-            </Button>
-          </div>
+          <Pagination className='mt-8'>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href='#notifications'
+                  aria-disabled={!hasPrev || loading}
+                  className={cn(
+                    (!hasPrev || loading) && 'pointer-events-none opacity-50',
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!hasPrev || loading) return;
+                    setOffset((o) => Math.max(0, o - pageLimit));
+                  }}
+                />
+              </PaginationItem>
+              {visiblePages.map((entry) =>
+                entry.type === 'ellipsis' ? (
+                  <PaginationItem key={`ellipsis-${entry.key}`}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={entry.n}>
+                    <PaginationLink
+                      href='#notifications'
+                      isActive={currentPage === entry.n}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (loading || currentPage === entry.n) return;
+                        goToPage(entry.n);
+                      }}
+                      className={cn(loading && 'pointer-events-none opacity-50')}
+                    >
+                      {entry.n}
+                    </PaginationLink>
+                  </PaginationItem>
+                ),
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href='#notifications'
+                  aria-disabled={!hasMore || loading}
+                  className={cn(
+                    (!hasMore || loading) && 'pointer-events-none opacity-50',
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!hasMore || loading) return;
+                    setOffset((o) => o + pageLimit);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         ) : null}
-
-        <p className='mt-10 text-center text-xs text-muted-foreground'>
-          <Link to={ROUTES.home} className='font-semibold text-primary-container hover:underline'>
-            Kembali ke beranda
-          </Link>
-        </p>
       </main>
     </div>
   );

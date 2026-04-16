@@ -54,8 +54,12 @@ export function mapLoginResponse(data) {
   const isStaff =
     typeof userObj?.is_staff === 'boolean'
       ? userObj.is_staff
-      : typeof root.is_staff === 'boolean'
-        ? root.is_staff
+      : typeof userObj?.is_superuser === 'boolean'
+        ? userObj.is_superuser
+        : typeof root.is_staff === 'boolean'
+          ? root.is_staff
+          : typeof root.is_superuser === 'boolean'
+            ? root.is_superuser
         : false;
 
   return {

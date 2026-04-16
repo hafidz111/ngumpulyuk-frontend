@@ -41,6 +41,7 @@ export const notificationsApi = {
   /**
    * Admin/staff-only endpoint.
    * - Specific users: { title, message, link_url?, user_ids: string[] }
+   * - By interests: { title, message, link_url?, interests: string[] }
    * - All active users: { title, message, link_url?, all_users: true, confirm: 'BLAST_ALL_USERS' }
    *
    * @param {{
@@ -48,6 +49,7 @@ export const notificationsApi = {
    *   message: string;
    *   link_url?: string;
    *   user_ids?: string[];
+   *   interests?: string[];
    *   all_users?: boolean;
    *   confirm?: string;
    * }} payload

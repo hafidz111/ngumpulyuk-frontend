@@ -120,8 +120,8 @@ export function AuthProvider({ children }) {
           isStaff:
             typeof data.is_staff === 'boolean'
               ? data.is_staff
-              : typeof data.is_admin === 'boolean'
-                ? data.is_admin
+              : typeof data.is_superuser === 'boolean'
+                ? data.is_superuser
                 : current.isStaff,
         };
         persistUser(next);

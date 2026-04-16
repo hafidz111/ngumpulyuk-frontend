@@ -1,45 +1,87 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Loader2, MapPin, Sparkles, Users, Zap } from 'lucide-react';
+import { Clock, Loader2, MapPin, Sparkles, Users, Zap } from 'lucide-react';
 
 import { Card, CardContent } from '@/presentation/components/ui/card';
 
-import { ROUTES } from '@/shared/config/routes';
 import { cn } from '@/lib/utils';
 import { eventsApi } from '@/infrastructure/events/events-api';
+import { recommendationsApi } from '@/infrastructure/recommendations/recommendations-api';
+import { mapRecommendedEventsResponse } from '@/application/recommendations/map-recommended-events-response';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
+
+const RECOMMENDATION_TIMEOUT_MS = 1200;
+
+function normalizeEventList(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (data?.data) {
+    const inner = data.data;
+    return Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
+  }
+  return [];
+}
 
 export function HomeRecommendedSection({ activeEventIds = new Set() }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const loadRecommendations = useCallback(async () => {
+    try {
+      const recRes = await Promise.race([
+        recommendationsApi.events({ limit: 10 }),
+        new Promise((_, reject) => {
+          window.setTimeout(() => reject(new Error('recommendation_timeout')), RECOMMENDATION_TIMEOUT_MS);
+        }),
+      ]);
+      const recItems = mapRecommendedEventsResponse(recRes.data);
+      if (recItems.length > 0) {
+        const merged = recItems.map((event) => ({
+          ...event,
+          is_joined: Boolean(event.is_joined || activeEventIds.has(String(event.id))),
+        }));
+        setEvents(merged.slice(0, 6));
+        return;
+      }
+    } catch {
+      // fallback below
+    }
+
+    const eventsRes = await eventsApi.list({ limit: 6, sort: 'popular', status: 'upcoming' });
+    const items = normalizeEventList(eventsRes.data);
+    const merged = items.map((event) => ({
+      ...event,
+      is_joined: Boolean(event.is_joined || activeEventIds.has(String(event.id))),
+    }));
+    setEvents(merged.slice(0, 6));
+  }, [activeEventIds]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const eventsRes = await eventsApi.list({ limit: 6, sort: 'popular', status: 'upcoming' });
-        const data = eventsRes.data;
-        let items = [];
-        if (Array.isArray(data)) items = data;
-        else if (data?.results) items = data.results;
-        else if (data?.data) {
-          const inner = data.data;
-          items = Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
-        }
-        const merged = items.map((event) => ({
-          ...event,
-          is_joined: Boolean(event.is_joined || activeEventIds.has(String(event.id))),
-        }));
-        if (!cancelled) setEvents(merged.slice(0, 6));
+        await loadRecommendations();
       } catch {
-        // silently ignore
+        if (!cancelled) setEvents([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    load();
-    return () => { cancelled = true; };
-  }, [activeEventIds]);
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRecommendations]);
+
+  const handleRecommendedClick = useCallback((eventId) => {
+    if (!eventId) return;
+    void recommendationsApi.signal({
+      event_id: String(eventId),
+      signal_type: 'view',
+      platform: 'web',
+      source: 'home_recommendations',
+    });
+  }, []);
 
   return (
     <section className='space-y-4'>
@@ -88,7 +130,11 @@ export function HomeRecommendedSection({ activeEventIds = new Set() }) {
 
             return (
               <div key={event.id} className='w-[85vw] shrink-0 snap-center xs:w-[280px] sm:w-[320px]'>
-                <Link to={`/events/${event.id}`} className='group block h-full'>
+                <Link
+                  to={`/events/${event.id}`}
+                  className='group block h-full'
+                  onClick={() => handleRecommendedClick(event.id)}
+                >
                   <Card className='flex h-full flex-col overflow-hidden border border-border bg-card shadow-sm transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-md'>
                     
                     {/* Image Header */}

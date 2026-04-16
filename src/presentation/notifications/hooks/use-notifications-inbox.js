@@ -8,9 +8,10 @@ import { notificationsApi } from '@/infrastructure/notifications/notifications-a
 
 const PAGE_LIMIT = 20;
 const POLL_MS = 45_000;
+const ALL_TYPES_VALUE = 'all';
 
 const TYPE_OPTIONS = [
-  { value: '', label: 'Semua tipe' },
+  { value: ALL_TYPES_VALUE, label: 'Semua tipe' },
   { value: 'event_reminder', label: 'Pengingat event' },
   { value: 'new_event', label: 'Event baru' },
   { value: 'event_update', label: 'Update event' },
@@ -30,7 +31,7 @@ export function useNotificationsInbox(enabled) {
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filterRead, setFilterReadState] = useState('all');
-  const [filterType, setFilterTypeState] = useState('');
+  const [filterType, setFilterTypeState] = useState(ALL_TYPES_VALUE);
 
   const params = useMemo(() => {
     const p = {
@@ -39,7 +40,7 @@ export function useNotificationsInbox(enabled) {
     };
     if (filterRead === 'unread') p.is_read = false;
     if (filterRead === 'read') p.is_read = true;
-    if (filterType) p.type = filterType;
+    if (filterType && filterType !== ALL_TYPES_VALUE) p.type = filterType;
     return p;
   }, [offset, filterRead, filterType]);
 

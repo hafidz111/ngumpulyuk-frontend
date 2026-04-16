@@ -326,15 +326,22 @@ export default function ProfilePage() {
                 </div>
 
                 {!isPublicProfile ? (
-                  <Button
-                    type='button'
-                    variant={editMode ? 'outline' : 'default'}
-                    onClick={() => setEditMode((v) => !v)}
-                    className='rounded-full'
-                  >
-                    <PencilLine className='size-4' />
-                    {editMode ? 'Batal Edit' : 'Edit Profil'}
-                  </Button>
+                  <div className='flex flex-wrap items-center justify-end gap-2'>
+                    {user?.isStaff ? (
+                      <Button asChild type='button' variant='outline' className='rounded-full'>
+                        <Link to={ROUTES.notificationsBlast}>Blast Notifikasi</Link>
+                      </Button>
+                    ) : null}
+                    <Button
+                      type='button'
+                      variant={editMode ? 'outline' : 'default'}
+                      onClick={() => setEditMode((v) => !v)}
+                      className='rounded-full'
+                    >
+                      <PencilLine className='size-4' />
+                      {editMode ? 'Batal Edit' : 'Edit Profil'}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
 
