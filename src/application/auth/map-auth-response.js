@@ -9,6 +9,7 @@
  *   email: string;
  *   fullName: string;
  *   onboardingCompleted: boolean | null;
+ *   isStaff: boolean;
  * }}
  */
 export function mapLoginResponse(data) {
@@ -50,6 +51,13 @@ export function mapLoginResponse(data) {
     onboardingCompleted = root.onboarding_completed;
   }
 
+  const isStaff =
+    typeof userObj?.is_staff === 'boolean'
+      ? userObj.is_staff
+      : typeof root.is_staff === 'boolean'
+        ? root.is_staff
+        : false;
+
   return {
     access,
     refresh,
@@ -58,5 +66,6 @@ export function mapLoginResponse(data) {
     email,
     fullName,
     onboardingCompleted,
+    isStaff,
   };
 }

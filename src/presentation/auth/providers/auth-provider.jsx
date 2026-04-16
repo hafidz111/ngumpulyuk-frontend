@@ -10,6 +10,7 @@ import {
   getAccessToken,
   getRefreshToken,
 } from '@/infrastructure/http/token-storage';
+import { unregisterPushDeviceIfAny } from '@/infrastructure/notifications/push-device';
 import { AuthContext } from '../context/auth-context';
 
 const USER_KEY = 'ngumpulyuk.user';
@@ -49,6 +50,7 @@ function buildUserState({
   email,
   fullName,
   onboardingCompleted,
+  isStaff,
 }) {
   const id = String(userId ?? '').trim();
   const un = String(username ?? '').trim();
@@ -66,20 +68,8 @@ function buildUserState({
     fullName: fn,
     displayName,
     isOnboarded,
+    isStaff: Boolean(isStaff),
   };
-}
-
-function getTokenExpDate(token) {
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(
-      atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-    );
-    if (payload.exp) return payload.exp * 1000;
-  } catch {
-    // Abaikan jika token tidak valid atau error decoding
-  }
-  return null;
 }
 
 function extractPayload(payload) {
@@ -101,6 +91,7 @@ export function AuthProvider({ children }) {
         fullName: '',
         displayName: 'Pengguna',
         isOnboarded: false,
+        isStaff: false,
       }
     );
   });
@@ -126,6 +117,12 @@ export function AuthProvider({ children }) {
             typeof data.onboarding_completed === 'boolean'
               ? data.onboarding_completed
               : current.isOnboarded,
+          isStaff:
+            typeof data.is_staff === 'boolean'
+              ? data.is_staff
+              : typeof data.is_admin === 'boolean'
+                ? data.is_admin
+                : current.isStaff,
         };
         persistUser(next);
         return next;
@@ -145,6 +142,7 @@ export function AuthProvider({ children }) {
    *   email: string;
    *   fullName?: string;
    *   onboardingCompleted?: boolean | null;
+   *   isStaff?: boolean | null;
    * }} payload
    */
   const setSession = useCallback((payload) => {
@@ -156,6 +154,7 @@ export function AuthProvider({ children }) {
       email,
       fullName,
       onboardingCompleted,
+      isStaff,
     } = payload;
     if (access) setAccessToken(access);
     if (refresh !== undefined && refresh !== null) setRefreshToken(refresh);
@@ -174,6 +173,7 @@ export function AuthProvider({ children }) {
       email,
       fullName,
       onboardingCompleted,
+      isStaff,
     });
     persistUser(next);
     setUser(next);
@@ -209,6 +209,11 @@ export function AuthProvider({ children }) {
     } catch {
       /* tetap bersihkan sesi lokal */
     } finally {
+      try {
+        await unregisterPushDeviceIfAny();
+      } catch {
+        /* ignore */
+      }
       clearAllAuthStorage();
       setIsAuthenticated(false);
       setUser(null);

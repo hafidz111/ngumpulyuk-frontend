@@ -54,6 +54,12 @@ const ComingSoonPage = lazy(
 const ProfilePage = lazy(
   () => import('../presentation/profile/pages/profile-page.jsx'),
 );
+const NotificationsPage = lazy(
+  () => import('../presentation/notifications/pages/notifications-page.jsx'),
+);
+const NotificationsBlastPage = lazy(
+  () => import('../presentation/notifications/pages/notifications-blast-page.jsx'),
+);
 const EventMapPage = lazy(
   () => import('../presentation/map/event-map-page.jsx'),
 );
@@ -153,6 +159,14 @@ const router = createBrowserRouter([
   {
     path: ROUTES.profile,
     element: suspense(<ProfilePage />),
+  },
+  {
+    path: ROUTES.notifications,
+    element: suspense(<NotificationsPage />),
+  },
+  {
+    path: ROUTES.notificationsBlast,
+    element: suspense(<NotificationsBlastPage />),
   },
   {
     path: ROUTES.profileByUsername,

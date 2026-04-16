@@ -13,6 +13,7 @@ import {
 import { ROUTES } from '@/shared/config/routes';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
+import { useNotificationUnreadCount } from '@/presentation/notifications/hooks/use-notification-unread-count';
 
 const navItems = [
   { to: ROUTES.home, label: 'Home', icon: Home, end: true },
@@ -23,7 +24,8 @@ const navItems = [
 ];
 
 export function HomeAppHeader() {
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
+  const { unreadCount } = useNotificationUnreadCount(isAuthenticated);
 
   return (
     <header className='sticky top-0 z-40 border-b border-border/60 bg-surface-bright/95 backdrop-blur-md'>
@@ -36,7 +38,7 @@ export function HomeAppHeader() {
         </Link>
 
         <nav className='hidden flex-1 items-center justify-center gap-1 md:flex'>
-          {navItems.map(({ to, label, end, icon: NavIcon }) => (
+          {navItems.map(({ to, label, end, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -50,21 +52,29 @@ export function HomeAppHeader() {
                 )
               }
             >
-              <NavIcon className='size-5' aria-hidden />
+              <Icon className='size-5' aria-hidden />
               {label}
             </NavLink>
           ))}
         </nav>
 
         <div className='flex items-center gap-1 sm:gap-2'>
-          <button
-            type='button'
-            className='relative rounded-full p-2.5 text-foreground hover:bg-muted'
-            aria-label='Notifikasi'
+          <Link
+            to={ROUTES.notifications}
+            className='relative inline-flex rounded-full p-2.5 text-foreground hover:bg-muted'
+            aria-label={
+              unreadCount > 0
+                ? `Notifikasi, ${unreadCount} belum dibaca`
+                : 'Notifikasi'
+            }
           >
             <Bell className='size-5' />
-            <span className='absolute right-1.5 top-1.5 size-2 rounded-full bg-primary-container ring-2 ring-surface-bright' />
-          </button>
+            {unreadCount > 0 ? (
+              <span className='absolute -right-0.5 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary-container px-1 text-[0.65rem] font-bold leading-none text-primary-foreground ring-2 ring-surface-bright'>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            ) : null}
+          </Link>
           <button
             type='button'
             className='rounded-full p-2.5 text-foreground hover:bg-muted'
@@ -87,7 +97,7 @@ export function HomeAppHeader() {
         className='flex gap-1 overflow-x-auto border-t border-border/50 px-4 pb-3 pt-2 md:hidden'
         aria-label='Navigasi utama'
       >
-        {navItems.map(({ to, label, end, icon: NavIcon }) => (
+        {navItems.map(({ to, label, end, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -101,7 +111,7 @@ export function HomeAppHeader() {
               )
             }
           >
-            <NavIcon className='size-4' aria-hidden />
+            <Icon className='size-4' aria-hidden />
             {label}
           </NavLink>
         ))}

@@ -19,6 +19,8 @@ export const ROUTES = {
   map: '/map',
   profile: '/profile',
   profileByUsername: '/profile/:username',
+  notifications: '/notifications',
+  notificationsBlast: '/notifications/blast',
   notFound: '/404',
   errorPattern: '/error/:code',
 };
