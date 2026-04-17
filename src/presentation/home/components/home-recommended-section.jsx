@@ -1,26 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Loader2, MapPin, Sparkles, Users, Zap } from 'lucide-react';
+import { Clock, MapPin, Sparkles, Users, Zap } from 'lucide-react';
 
 import { Card, CardContent } from '@/presentation/components/ui/card';
 
 import { cn } from '@/lib/utils';
-import { eventsApi } from '@/infrastructure/events/events-api';
 import { recommendationsApi } from '@/infrastructure/recommendations/recommendations-api';
 import { mapRecommendedEventsResponse } from '@/application/recommendations/map-recommended-events-response';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 
 const RECOMMENDATION_TIMEOUT_MS = 1200;
-
-function normalizeEventList(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.results)) return data.results;
-  if (data?.data) {
-    const inner = data.data;
-    return Array.isArray(inner) ? inner : (inner?.results || inner?.events || []);
-  }
-  return [];
-}
 
 export function HomeRecommendedSection({ activeEventIds = new Set() }) {
   const [events, setEvents] = useState([]);
@@ -43,17 +32,9 @@ export function HomeRecommendedSection({ activeEventIds = new Set() }) {
         setEvents(merged.slice(0, 6));
         return;
       }
-    } catch {
-      // fallback below
-    }
+    } catch {}
 
-    const eventsRes = await eventsApi.list({ limit: 6, sort: 'popular', status: 'upcoming' });
-    const items = normalizeEventList(eventsRes.data);
-    const merged = items.map((event) => ({
-      ...event,
-      is_joined: Boolean(event.is_joined || activeEventIds.has(String(event.id))),
-    }));
-    setEvents(merged.slice(0, 6));
+    setEvents([]);
   }, [activeEventIds]);
 
   useEffect(() => {
@@ -83,6 +64,10 @@ export function HomeRecommendedSection({ activeEventIds = new Set() }) {
     });
   }, []);
 
+  if (loading || events.length === 0) {
+    return null;
+  }
+
   return (
     <section className='space-y-4'>
       <div className='flex items-center justify-between gap-4'>
@@ -92,18 +77,8 @@ export function HomeRecommendedSection({ activeEventIds = new Set() }) {
         </h2>
       </div>
 
-      {loading ? (
-        <div className='flex items-center justify-center py-12'>
-          <Loader2 className='size-6 animate-spin text-[#FF8000]' />
-        </div>
-      ) : events.length === 0 ? (
-        <div className='flex flex-col items-center justify-center gap-3 rounded-2xl bg-card py-12 text-center'>
-          <Zap className='size-8 text-muted-foreground/30' />
-          <p className='text-sm text-muted-foreground'>Belum ada event rekomendasi</p>
-        </div>
-      ) : (
-        <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 pt-2 xs:gap-6 md:gap-8'>
-          {events.map((event, idx) => {
+      <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 pt-2 xs:gap-6 md:gap-8'>
+        {events.map((event, idx) => {
             const current = event.participant_count ?? event.participants_count ?? event.current_participants ?? 0;
             const max = event.max_participants ?? '∞';
             const isJoined = Boolean(
@@ -233,9 +208,8 @@ export function HomeRecommendedSection({ activeEventIds = new Set() }) {
                 </Link>
               </div>
             );
-          })}
-        </div>
-      )}
+        })}
+      </div>
     </section>
   );
 }
