@@ -87,8 +87,9 @@ function extractEventTitle(activity, eventDetail) {
 
 function isUpcomingEvent(eventDetail) {
   if (!eventDetail) return false;
-  if (String(eventDetail.status || '').toLowerCase() === 'upcoming') return true;
-  const sourceDate = eventDetail.event_date || eventDetail.start_date || '';
+  const status = String(eventDetail.status || '').toLowerCase();
+  if (status === 'cancelled' || status === 'completed') return false;
+  const sourceDate = eventDetail.end_date || eventDetail.event_date || eventDetail.start_date || '';
   if (!sourceDate) return false;
   const date = new Date(sourceDate);
   if (Number.isNaN(date.getTime())) return false;
