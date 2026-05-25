@@ -26,7 +26,6 @@ function emailFromGoogleJwt(jwt) {
 export function useGoogleAuthSubmit() {
   const { setSession } = useAuth();
   const navigate = useNavigate();
-  const [googleError, setGoogleError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const signInWithGoogleCredential = useCallback(
@@ -34,10 +33,9 @@ export function useGoogleAuthSubmit() {
       const token =
         typeof credentialJwt === 'string' ? credentialJwt.trim() : '';
       if (!token) {
-        setGoogleError('Credential Google tidak diterima.');
+        toast.error('Credential Google tidak diterima.', { duration: 4000 });
         return;
       }
-      setGoogleError('');
       setIsGoogleLoading(true);
       try {
         const { data } = await authApi.google({ access_token: token });
@@ -47,7 +45,7 @@ export function useGoogleAuthSubmit() {
             : {},
         );
         if (!mapped.access) {
-          setGoogleError('Respons server tidak berisi token.');
+          toast.error('Respons server tidak berisi token.', { duration: 4000 });
           return;
         }
         const resolvedEmail = mapped.email;
@@ -69,7 +67,7 @@ export function useGoogleAuthSubmit() {
                     `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
                   ) === '1',
               );
-        const nextPath = isOnboarded ? ROUTES.home : ROUTES.onboarding;
+        const nextPath = isOnboarded ? ROUTES.chat : ROUTES.onboarding;
         toast.success('Berhasil masuk dengan Google.', { duration: 4000 });
         navigate(nextPath, { replace: true });
       } catch (err) {
@@ -88,7 +86,9 @@ export function useGoogleAuthSubmit() {
           });
           return;
         }
-        setGoogleError(getAuthErrorMessage(err, 'Google Sign-In gagal.'));
+        toast.error(getAuthErrorMessage(err, 'Google Sign-In gagal.'), {
+          duration: 4000,
+        });
       } finally {
         setIsGoogleLoading(false);
       }
@@ -96,5 +96,5 @@ export function useGoogleAuthSubmit() {
     [navigate, setSession],
   );
 
-  return { signInWithGoogleCredential, googleError, isGoogleLoading };
+  return { signInWithGoogleCredential, isGoogleLoading };
 }

@@ -12,11 +12,9 @@ import { GoogleSignInButton } from '@/presentation/auth/components/google-sign-i
 
 export function LoginForm({
   className,
-  submitError,
   isSubmitting,
   notice,
   onGoogleCredential,
-  googleError,
   isGoogleLoading,
   ...props
 }) {
@@ -115,12 +113,6 @@ export function LoginForm({
             </div>
           </div>
 
-          {submitError ? (
-            <p className='text-center text-sm text-destructive' role='alert'>
-              {submitError}
-            </p>
-          ) : null}
-
           <Button
             type='submit'
             disabled={isSubmitting}
@@ -136,12 +128,6 @@ export function LoginForm({
             </span>
             <span className='h-px flex-1 bg-border' aria-hidden />
           </div>
-
-          {googleError ? (
-            <p className='text-center text-sm text-destructive' role='alert'>
-              {googleError}
-            </p>
-          ) : null}
 
           <GoogleSignInButton
             text='signin_with'

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CheckCheck, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -28,7 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/presentation/components/ui/select';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
+import { resolveNotificationLink } from '@/application/notifications/resolve-notification-link';
 import { useNotificationsInbox } from '../hooks/use-notifications-inbox';
 
 function formatCreatedAt(iso) {
@@ -92,6 +95,7 @@ function getVisiblePageNumbers(currentPage, totalPages) {
 
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const navigate = useNavigate();
   const {
     items,
@@ -136,11 +140,12 @@ export default function NotificationsPage() {
       if (!n.isRead) {
         await markOneRead(n.id);
       }
-      if (n.linkUrl) {
-        if (/^https?:\/\//i.test(n.linkUrl)) {
-          window.location.assign(n.linkUrl);
+      const target = resolveNotificationLink(n.linkUrl);
+      if (target) {
+        if (/^https?:\/\//i.test(target)) {
+          window.location.assign(target);
         } else {
-          navigate(n.linkUrl);
+          navigate(target);
         }
       }
     },
@@ -155,39 +160,33 @@ export default function NotificationsPage() {
     }
   }, [load, markAllRead]);
 
-  if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />;
-  }
+  const notificationSubtitle = unreadCount > 0
+    ? `${unreadCount} belum dibaca${total > 0 ? ` · ${total} total` : ''}`
+    : `Semua sudah dibaca${total > 0 ? ` · ${total} total` : ''}`;
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-
-      <main className='mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-10'>
-        <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
-          <div>
-            <h1 className='font-display text-3xl font-black tracking-tight md:text-4xl'>
-              Notifikasi
-            </h1>
-            <p className='mt-1 text-sm text-muted-foreground'>
-              {unreadCount > 0
-                ? `${unreadCount} belum dibaca`
-                : 'Semua sudah dibaca'}
-              {total > 0 ? ` · ${total} total` : ''}
-            </p>
-          </div>
+    <div className='flex min-h-0 flex-1 flex-col'>
+      <ChatFirstPageHeader
+        title='Notifikasi'
+        subtitle={notificationSubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+        actions={(
           <Button
             type='button'
             variant='outline'
-            className='h-11 shrink-0 rounded-full border-border/60 font-semibold'
+            className='h-10 shrink-0 rounded-full border-border/60 px-3 text-xs font-semibold sm:text-sm'
             disabled={loading || unreadCount === 0}
             onClick={() => void handleMarkAll()}
           >
-            <CheckCheck className='mr-2 size-4' aria-hidden />
-            Tandai semua dibaca
+            <CheckCheck className='mr-1.5 size-4' aria-hidden />
+            <span className='hidden sm:inline'>Tandai semua dibaca</span>
+            <span className='sm:hidden'>Semua dibaca</span>
           </Button>
-        </div>
-
+        )}
+      />
+      <ChatFirstPageBody>
+        <div className='mx-auto max-w-3xl'>
         <div className='mb-6 flex flex-col gap-3 sm:flex-row sm:items-center'>
           <Select value={filterRead} onValueChange={setFilterRead}>
             <SelectTrigger className='h-11 w-full rounded-2xl border-border/60 bg-white sm:max-w-[200px]'>
@@ -324,7 +323,8 @@ export default function NotificationsPage() {
             </PaginationContent>
           </Pagination>
         ) : null}
-      </main>
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

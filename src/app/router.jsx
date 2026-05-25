@@ -1,5 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+  useParams,
+} from 'react-router-dom';
 
 import { ROUTES } from '../shared/config/routes';
 
@@ -69,6 +74,13 @@ const AdminChatCorrectionsPage = lazy(
 const EventMapPage = lazy(
   () => import('../presentation/map/event-map-page.jsx'),
 );
+const ChatMainView = lazy(
+  () => import('../presentation/chat/pages/chat-main-view.jsx'),
+);
+const ChatFirstLayout = lazy(
+  () => import('../presentation/layout/chat-first-layout.jsx'),
+);
+const HomePage = lazy(() => import('../presentation/home/home-page.jsx'));
 const NotFoundPage = lazy(
   () => import('../presentation/error-pages/not-found-page.jsx'),
 );
@@ -90,6 +102,12 @@ function RouteFallback() {
 const suspense = (node) => (
   <Suspense fallback={<RouteFallback />}>{node}</Suspense>
 );
+
+/** Legacy notification URLs used API-style `/communities/:id`. */
+function LegacyCommunityRedirect() {
+  const { id } = useParams();
+  return <Navigate to={ROUTES.communityDetail.replace(':id', id ?? '')} replace />;
+}
 
 const router = createBrowserRouter([
   {
@@ -120,71 +138,29 @@ const router = createBrowserRouter([
     path: ROUTES.onboarding,
     element: suspense(<OnboardingPage />),
   },
-  // Explore redirects to Events
   {
-    path: ROUTES.explore,
-    element: <Navigate to={ROUTES.events} replace />,
-  },
-  // Events
-  {
-    path: ROUTES.events,
-    element: suspense(<EventsListPage />),
-  },
-  {
-    path: ROUTES.eventCreate,
-    element: suspense(<EventCreatePage />),
-  },
-  {
-    path: ROUTES.eventEdit,
-    element: suspense(<EventEditPage />),
-  },
-  {
-    path: ROUTES.eventDetail,
-    element: suspense(<EventDetailPage />),
-  },
-  {
-    path: ROUTES.community,
-    element: suspense(<CommunityPage />),
-  },
-  {
-    path: ROUTES.communityCreate,
-    element: suspense(<CommunityCreatePage />),
-  },
-  {
-    path: ROUTES.communityDetail,
-    element: suspense(<CommunityDetailPage />),
-  },
-  {
-    path: ROUTES.threadDetail,
-    element: suspense(<ThreadDetailPage />),
-  },
-  {
-    path: ROUTES.map,
-    element: suspense(<EventMapPage />),
-  },
-  {
-    path: ROUTES.profile,
-    element: suspense(<ProfilePage />),
-  },
-  {
-    path: ROUTES.notifications,
-    element: suspense(<NotificationsPage />),
-  },
-  {
-    path: ROUTES.notificationsBlast,
-    element: suspense(<NotificationsBlastPage />),
-  },
-  {
-    path: ROUTES.adminChatMonitoring,
-    element: suspense(<AdminChatMonitoringPage />),
-  },
-  {
-    path: ROUTES.adminChatCorrections,
-    element: suspense(<AdminChatCorrectionsPage />),
-  },
-  {
-    path: ROUTES.profileByUsername,
-    element: suspense(<ProfilePage />),
+    element: suspense(<ChatFirstLayout />),
+    children: [
+      { path: ROUTES.chat, element: suspense(<ChatMainView />) },
+      { path: ROUTES.feed, element: suspense(<HomePage />) },
+      { path: ROUTES.explore, element: <Navigate to={ROUTES.events} replace /> },
+      { path: ROUTES.events, element: suspense(<EventsListPage />) },
+      { path: ROUTES.eventCreate, element: suspense(<EventCreatePage />) },
+      { path: ROUTES.eventEdit, element: suspense(<EventEditPage />) },
+      { path: ROUTES.eventDetail, element: suspense(<EventDetailPage />) },
+      { path: ROUTES.community, element: suspense(<CommunityPage />) },
+      { path: ROUTES.communityCreate, element: suspense(<CommunityCreatePage />) },
+      { path: ROUTES.communityDetail, element: suspense(<CommunityDetailPage />) },
+      { path: '/communities/:id', element: <LegacyCommunityRedirect /> },
+      { path: ROUTES.threadDetail, element: suspense(<ThreadDetailPage />) },
+      { path: ROUTES.map, element: suspense(<EventMapPage />) },
+      { path: ROUTES.profile, element: suspense(<ProfilePage />) },
+      { path: ROUTES.profileByUsername, element: suspense(<ProfilePage />) },
+      { path: ROUTES.notifications, element: suspense(<NotificationsPage />) },
+      { path: ROUTES.notificationsBlast, element: suspense(<NotificationsBlastPage />) },
+      { path: ROUTES.adminChatMonitoring, element: suspense(<AdminChatMonitoringPage />) },
+      { path: ROUTES.adminChatCorrections, element: suspense(<AdminChatCorrectionsPage />) },
+    ],
   },
   {
     path: ROUTES.notFound,

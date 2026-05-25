@@ -1,3 +1,5 @@
+import { resolveNotificationLink } from './resolve-notification-link';
+
 /**
  * Normalizes list response from GET /v1/notifications/ (DRF-style or custom envelope).
  *
@@ -53,12 +55,13 @@ export function mapNotificationRow(row) {
     type: String(row.type ?? ''),
     title: String(row.title ?? ''),
     message: String(row.message ?? ''),
-    linkUrl:
+    linkUrl: resolveNotificationLink(
       row.link_url != null && row.link_url !== ''
         ? String(row.link_url)
         : row.linkUrl != null && row.linkUrl !== ''
           ? String(row.linkUrl)
           : null,
+    ),
     relatedId:
       row.related_id != null && row.related_id !== ''
         ? String(row.related_id)

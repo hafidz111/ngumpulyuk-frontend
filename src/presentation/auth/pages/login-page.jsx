@@ -15,12 +15,10 @@ import { AuthSplitLayout } from '../components/auth-split-layout';
 
 export default function LoginPage() {
   const { setSession } = useAuth();
-  const { signInWithGoogleCredential, googleError, isGoogleLoading } =
-    useGoogleAuthSubmit();
+  const { signInWithGoogleCredential, isGoogleLoading } = useGoogleAuthSubmit();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const notice = useMemo(() => {
@@ -34,7 +32,6 @@ export default function LoginPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setSubmitError('');
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get('email') ?? '').trim();
     const password = String(fd.get('password') ?? '');
@@ -47,7 +44,9 @@ export default function LoginPage() {
           : {},
       );
       if (!mapped.access) {
-        setSubmitError('Respons server tidak berisi token. Hubungi admin.');
+        toast.error('Respons server tidak berisi token. Hubungi admin.', {
+          duration: 4000,
+        });
         return;
       }
       const resolvedEmail = mapped.email || email;
@@ -69,7 +68,7 @@ export default function LoginPage() {
                   `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
                 ) === '1',
             );
-      const nextPath = isOnboarded ? ROUTES.home : ROUTES.onboarding;
+      const nextPath = isOnboarded ? ROUTES.chat : ROUTES.onboarding;
       toast.success('Berhasil masuk.', { duration: 4000 });
       navigate(nextPath, { replace: true });
     } catch (err) {
@@ -85,7 +84,7 @@ export default function LoginPage() {
         });
         return;
       }
-      setSubmitError(getAuthErrorMessage(err, 'Login gagal.'));
+      toast.error(getAuthErrorMessage(err, 'Login gagal.'), { duration: 4000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -95,11 +94,9 @@ export default function LoginPage() {
     <AuthSplitLayout>
       <LoginForm
         onSubmit={handleSubmit}
-        submitError={submitError}
         isSubmitting={isSubmitting}
         notice={notice}
         onGoogleCredential={(cred) => void signInWithGoogleCredential(cred)}
-        googleError={googleError}
         isGoogleLoading={isGoogleLoading}
       />
     </AuthSplitLayout>

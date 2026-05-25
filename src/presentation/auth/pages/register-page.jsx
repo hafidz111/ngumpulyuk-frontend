@@ -11,17 +11,14 @@ import { useGoogleAuthSubmit } from '../hooks/use-google-auth-submit';
 import { AuthSplitLayout } from '../components/auth-split-layout';
 
 export default function RegisterPage() {
-  const { signInWithGoogleCredential, googleError, isGoogleLoading } =
-    useGoogleAuthSubmit();
+  const { signInWithGoogleCredential, isGoogleLoading } = useGoogleAuthSubmit();
   const [passwordError, setPasswordError] = useState('');
-  const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setPasswordError('');
-    setSubmitError('');
     const form = e.currentTarget;
     const password = form.password?.value ?? '';
     const confirmPassword = form.confirmPassword?.value ?? '';
@@ -47,10 +44,15 @@ export default function RegisterPage() {
       navigate(ROUTES.verifyEmail, { replace: true });
     } catch (err) {
       if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_EXISTS'])) {
-        setSubmitError('Email sudah terdaftar. Silakan login atau gunakan email lain.');
+        toast.error(
+          'Email sudah terdaftar. Silakan login atau gunakan email lain.',
+          { duration: 4000 },
+        );
         return;
       }
-      setSubmitError(getAuthErrorMessage(err, 'Pendaftaran gagal.'));
+      toast.error(getAuthErrorMessage(err, 'Pendaftaran gagal.'), {
+        duration: 4000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -60,11 +62,9 @@ export default function RegisterPage() {
     <AuthSplitLayout>
       <SignupForm
         passwordError={passwordError}
-        submitError={submitError}
         isSubmitting={isSubmitting}
         onSubmit={handleSubmit}
         onGoogleCredential={(cred) => void signInWithGoogleCredential(cred)}
-        googleError={googleError}
         isGoogleLoading={isGoogleLoading}
       />
     </AuthSplitLayout>
