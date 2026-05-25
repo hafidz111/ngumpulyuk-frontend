@@ -4,7 +4,6 @@ import { getLandingContent } from '../../application/landing/use-cases/get-landi
 import { InMemoryLandingContentRepository } from '../../infrastructure/landing/repositories/in-memory-landing-content-repository';
 import { ROUTES } from '../../shared/config/routes';
 import { useAuth } from '../auth/hooks/use-auth';
-import HomePage from '../home/home-page.jsx';
 import { LandingAiMatcherSection } from './components/landing-ai-matcher-section';
 import { LandingFinalCtaSection } from './components/landing-final-cta-section';
 import { LandingFooter } from './components/landing-footer';
@@ -25,7 +24,7 @@ function LandingPage() {
     if (!user?.isOnboarded) {
       return <Navigate to={ROUTES.onboarding} replace />;
     }
-    return <HomePage />;
+    return <Navigate to={ROUTES.chat} replace />;
   }
 
   return (

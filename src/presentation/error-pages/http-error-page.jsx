@@ -1,16 +1,15 @@
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 
 import { ROUTES } from '../../shared/config/routes';
 import { isServiceErrorStatus } from '../../shared/lib/service-error';
-import { Button } from '../components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
+import { OutageRecoveryActions } from './outage-recovery-actions';
 
 const COPY = {
   500: {
@@ -32,7 +31,6 @@ const COPY = {
 
 export default function HttpErrorPage() {
   const { code } = useParams();
-  const navigate = useNavigate();
   const num = Number(code);
 
   if (!isServiceErrorStatus(num)) {
@@ -52,23 +50,7 @@ export default function HttpErrorPage() {
         <CardContent className='text-center text-xs text-muted-foreground'>
           Jika masalah berlanjut, hubungi tim dukungan.
         </CardContent>
-        <CardFooter className='flex flex-col gap-3 pb-8 sm:flex-row sm:justify-center'>
-          <Button
-            type='button'
-            variant='outline'
-            className='w-full sm:w-auto'
-            onClick={() => window.location.reload()}
-          >
-            Coba lagi
-          </Button>
-          <Button
-            type='button'
-            className='w-full sm:w-auto'
-            onClick={() => navigate(ROUTES.home)}
-          >
-            Kembali ke beranda
-          </Button>
-        </CardFooter>
+        <OutageRecoveryActions />
       </Card>
     </div>
   );

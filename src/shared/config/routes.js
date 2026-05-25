@@ -1,5 +1,7 @@
 export const ROUTES = {
   home: '/',
+  chat: '/chat',
+  feed: '/home',
   maintenance: '/maintenance',
   login: '/login',
   register: '/register',

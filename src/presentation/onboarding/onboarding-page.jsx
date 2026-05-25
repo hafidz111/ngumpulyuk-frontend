@@ -95,7 +95,7 @@ export default function OnboardingPage() {
   }
 
   if (user?.isOnboarded) {
-    return <Navigate to={ROUTES.home} replace />;
+    return <Navigate to={ROUTES.chat} replace />;
   }
 
   function toggleActivity(id) {
@@ -180,7 +180,7 @@ export default function OnboardingPage() {
       await usersApi.completeOnboarding(body);
       completeOnboarding();
       toast.success('Onboarding selesai. Selamat datang!', { duration: 4000 });
-      navigate(ROUTES.home, { replace: true });
+      navigate(ROUTES.chat, { replace: true });
     } catch (err) {
       const msg = getAuthErrorMessage(err, 'Gagal menyimpan data onboarding.');
       setStepError(msg);
@@ -598,7 +598,7 @@ export default function OnboardingPage() {
                   className='font-medium text-primary-container hover:underline'
                   onClick={() => {
                     completeOnboarding();
-                    navigate(ROUTES.home, { replace: true });
+                    navigate(ROUTES.chat, { replace: true });
                   }}
                 >
                   Lewati dulu

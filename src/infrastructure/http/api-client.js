@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import { saveReturnPathBeforeOutage } from '@/infrastructure/http/health-check';
 import { API_BASE_URL } from '@/shared/config/env';
 import { ROUTES } from '@/shared/config/routes';
 import {
@@ -64,6 +65,7 @@ apiClient.interceptors.response.use(
         typeof window !== 'undefined' &&
         !window.location.pathname.startsWith('/error/')
       ) {
+        saveReturnPathBeforeOutage();
         window.location.assign(`/error/${status}`);
       }
       return Promise.reject(error);
@@ -143,6 +145,7 @@ function redirectToMaintenance() {
   if (typeof window === 'undefined') return;
 
   if (window.location.pathname !== ROUTES.maintenance) {
+    saveReturnPathBeforeOutage();
     window.location.assign(`${window.location.origin}${ROUTES.maintenance}`);
   }
 }

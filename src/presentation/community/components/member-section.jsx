@@ -47,7 +47,7 @@ export function MemberSection({ members = [], totalCount = 0, isOwner = false })
 
   return (
     <Card className='border border-border/80 bg-card p-5'>
-      <h3 className='font-display text-base font-bold text-foreground mb-4'>Members</h3>
+      <h3 className='mb-4 font-display text-base font-bold text-foreground'>Anggota</h3>
 
       {/* Member avatars */}
       <AvatarGroup>

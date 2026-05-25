@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
@@ -13,12 +13,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { cn } from '@/lib/utils';
+import { mapParticipationSummary } from '@/application/users/map-participation-summary';
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
+import { usersApi } from '@/infrastructure/users/users-api';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { APP_SHELL_SECONDARY_BUTTON_CLASS } from '@/presentation/layout/app-shell-chrome';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { ThreadCard } from '../components/thread-card';
 import { ThreadComposer } from '../components/thread-composer';
 import { MemberSection } from '../components/member-section';
@@ -42,7 +49,8 @@ function extractCollection(payload) {
 export default function CommunityDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
 
   const [community, setCommunity] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +72,7 @@ export default function CommunityDetailPage() {
   const [likingCommentId, setLikingCommentId] = useState(null);
 
   const [isJoined, setIsJoined] = useState(false);
+  const [composerEvents, setComposerEvents] = useState([]);
 
   const [manageOpen, setManageOpen] = useState(false);
   const [confirmType, setConfirmType] = useState(null);
@@ -130,6 +139,27 @@ export default function CommunityDetailPage() {
     fetchMembers();
     fetchThreads();
   }, [fetchCommunity, fetchMembers, fetchThreads]);
+
+  useEffect(() => {
+    if (!isJoined) {
+      setComposerEvents([]);
+      return;
+    }
+    let cancelled = false;
+    usersApi
+      .participationSummary()
+      .then((res) => {
+        if (cancelled) return;
+        const { events } = mapParticipationSummary(res.data);
+        setComposerEvents(events);
+      })
+      .catch(() => {
+        if (!cancelled) setComposerEvents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isJoined]);
 
   async function handleJoin() {
     setConfirmLoading(true);
@@ -294,41 +324,16 @@ export default function CommunityDetailPage() {
     }
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />;
-  }
+  const headerTitle = loading
+    ? 'Memuat...'
+    : (community?.name || 'Community');
+  const headerSubtitle = loading
+    ? 'Lagi load circle…'
+    : error || !community
+      ? (error || 'Circle gak ketemu')
+      : SHELL_COPY.pages.communityDetailMembers(memberCount);
 
-  if (loading) {
-    return (
-      <div className='min-h-svh bg-surface text-foreground'>
-        <HomeAppHeader />
-        <div className='flex items-center justify-center py-32'>
-          <Loader2 className='size-8 animate-spin text-primary-container' />
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !community) {
-    return (
-      <div className='min-h-svh bg-surface text-foreground'>
-        <HomeAppHeader />
-        <div className='flex flex-col items-center justify-center gap-4 py-32 text-center'>
-          <Zap className='size-10 text-muted-foreground/40' />
-          <p className='text-muted-foreground'>{error || 'Komunitas tidak ditemukan'}</p>
-          <Button
-            variant='outline'
-            onClick={() => navigate(ROUTES.community)}
-            className='rounded-full'
-          >
-            Kembali
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const createdDate = community.created_at
+  const createdDate = community?.created_at
     ? new Intl.DateTimeFormat('id-ID', { month: 'short', year: 'numeric' }).format(
       new Date(community.created_at),
     )
@@ -342,23 +347,44 @@ export default function CommunityDetailPage() {
     .join(', ');
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={headerTitle}
+        subtitle={headerSubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody className='md:py-8'>
+        <div className='mx-auto w-full max-w-3xl space-y-6 pb-8'>
+          <button
+            type='button'
+            onClick={() => navigate(-1)}
+            className='inline-flex items-center gap-1.5 rounded-full px-1 py-1 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground'
+          >
+            <ArrowLeft className='size-4' />
+            {SHELL_COPY.pages.communityDetailBack}
+          </button>
 
-      <main className='mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8'>
-        {/* Back button */}
-        <button
-          type='button'
-          onClick={() => navigate(-1)}
-          className='mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
-        >
-          <ArrowLeft className='size-4' />
-          Kembali
-        </button>
-
-        {/* Hero Banner */}
-        <div className='relative overflow-hidden rounded-2xl'>
-          <div className='aspect-[16/7] w-full bg-gradient-to-br from-primary-container/20 to-secondary/20'>
+          {loading ? (
+            <div className='flex items-center justify-center py-24'>
+              <Loader2 className='size-8 animate-spin text-[#FF8000]' />
+            </div>
+          ) : error || !community ? (
+            <div className='flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/70 bg-white px-6 py-20 text-center'>
+              <Zap className='size-10 text-[#FF8000]/40' />
+              <p className='text-muted-foreground'>{error || 'Circle gak ketemu'}</p>
+              <Button
+                variant='outline'
+                onClick={() => navigate(ROUTES.community)}
+                className='rounded-full'
+              >
+                {SHELL_COPY.pages.communityDetailBack}
+              </Button>
+            </div>
+          ) : (
+            <>
+        <div className='relative overflow-hidden rounded-3xl shadow-sm'>
+          <div className='aspect-[16/8] w-full bg-gradient-to-br from-[#FFF1E5] to-primary-container/20 sm:aspect-[16/7]'>
             {community.cover_image ? (
               <img
                 src={community.cover_image}
@@ -376,7 +402,7 @@ export default function CommunityDetailPage() {
                 <div className='mt-1 flex items-center gap-3 text-sm text-white/80'>
                   <span className='inline-flex items-center gap-1'>
                     <Users className='size-3.5' aria-hidden />
-                    {memberCount} members
+                    {SHELL_COPY.pages.communityDetailMembers(memberCount)}
                   </span>
                   {createdDate ? (
                     <>
@@ -400,8 +426,7 @@ export default function CommunityDetailPage() {
           </div>
         </div>
 
-        {/* Info Section */}
-        <Card className='mt-4 border border-border/80 bg-card p-5'>
+        <Card className='border border-border/60 bg-card p-5 shadow-sm'>
           <div className='flex items-start justify-between gap-4'>
             <div className='min-w-0 flex-1'>
               {community.description ? (
@@ -430,32 +455,32 @@ export default function CommunityDetailPage() {
               isOwner ? (
                 <Button
                   type='button'
-                  variant='outline'
+                  variant='ghost'
                   onClick={() => setConfirmType('owner-leave-community')}
                   disabled={confirmLoading}
-                  className='shrink-0 rounded-full px-5 font-semibold'
+                  className={cn('shrink-0 px-5', APP_SHELL_SECONDARY_BUTTON_CLASS)}
                 >
                   {confirmLoading && confirmType === 'owner-leave-community' ? (
                     <Loader2 className='size-4 animate-spin' />
                   ) : (
                     <LogOut className='size-4' />
                   )}
-                  Keluar
+                  {SHELL_COPY.pages.communityDetailLeave}
                 </Button>
               ) : (
                 <Button
                   type='button'
-                  variant='outline'
+                  variant='ghost'
                   onClick={() => setConfirmType('leave-community')}
                   disabled={confirmLoading}
-                  className='shrink-0 rounded-full px-5 font-semibold'
+                  className={cn('shrink-0 px-5', APP_SHELL_SECONDARY_BUTTON_CLASS)}
                 >
                   {confirmLoading && confirmType === 'leave-community' ? (
                     <Loader2 className='size-4 animate-spin' />
                   ) : (
                     <LogOut className='size-4' />
                   )}
-                  Keluar
+                  {SHELL_COPY.pages.communityDetailLeave}
                 </Button>
               )
             ) : (
@@ -463,71 +488,76 @@ export default function CommunityDetailPage() {
                 type='button'
                 onClick={() => setConfirmType('join-community')}
                 disabled={confirmLoading}
-                className='shrink-0 rounded-full bg-primary-container px-5 font-semibold text-primary-foreground hover:bg-primary-container/90'
+                className='shrink-0 rounded-full bg-[#FF8000] px-5 font-semibold text-white hover:bg-[#FF8000]/90'
               >
                 {confirmLoading && confirmType === 'join-community' ? (
                   <Loader2 className='size-4 animate-spin' />
                 ) : (
                   <UserPlus className='size-4' />
                 )}
-                Join
+                {SHELL_COPY.pages.communityDetailJoin}
               </Button>
             )}
           </div>
         </Card>
 
-        {/* Members Section */}
-        <div className='mt-6'>
-          <MemberSection
-            members={members}
-            totalCount={memberCount}
-            isOwner={isOwner}
-          />
-        </div>
+        <MemberSection
+          members={members}
+          totalCount={memberCount}
+          isOwner={isOwner}
+        />
 
-        {/* Thread Composer */}
-        {isJoined ? (
-          <div className='mt-6'>
+        <section className='space-y-4'>
+          <h2 className='font-display text-base font-bold text-foreground md:text-lg'>
+            {SHELL_COPY.pages.communityDetailThreads}
+          </h2>
+
+          {isJoined ? (
             <ThreadComposer
               onPost={handlePostThread}
               communities={[{ id: String(community.id), name: community.name }]}
+              events={composerEvents}
               autoSelectSingleCommunity
             />
-          </div>
-        ) : null}
+          ) : null}
 
-        {/* Threads */}
-        <div className='mt-6 space-y-4'>
           {threadsLoading ? (
             <div className='flex items-center justify-center py-12'>
-              <Loader2 className='size-6 animate-spin text-primary-container' />
+              <Loader2 className='size-6 animate-spin text-[#FF8000]' />
             </div>
           ) : threads.length === 0 ? (
-            <Card className='border border-border/80 bg-card p-8 text-center'>
-              <Zap className='mx-auto size-8 text-muted-foreground/30' />
+            <Card className='border border-dashed border-border/70 bg-white p-10 text-center'>
+              <Zap className='mx-auto size-8 text-[#FF8000]/35' />
               <p className='mt-2 text-sm text-muted-foreground'>
-                Belum ada thread. {isJoined ? 'Jadilah yang pertama posting!' : 'Gabung untuk posting.'}
+                {isJoined
+                  ? SHELL_COPY.pages.communityDetailThreadsEmptyJoined
+                  : SHELL_COPY.pages.communityDetailThreadsEmptyGuest}
               </p>
             </Card>
           ) : (
-            threads.map((t) => (
-              <ThreadCard
-                key={t.id}
-                thread={t}
-                communityName={community.name}
-                communityId={community.id}
-                isLiked={Boolean(t.is_liked)}
-                isLiking={togglingLikeId === t.id}
-                onLike={handleLikeThread}
-                onOpenComments={handleOpenComments}
-                onDelete={handleDeleteThread}
-                canDelete={Boolean(t.can_delete ?? isAdmin)}
-                isDeleting={deletingThreadId === t.id}
-              />
-            ))
+            <div className='space-y-4'>
+              {threads.map((t) => (
+                <ThreadCard
+                  key={t.id}
+                  thread={t}
+                  communityName={community.name}
+                  communityId={community.id}
+                  isLiked={Boolean(t.is_liked)}
+                  isLiking={togglingLikeId === t.id}
+                  onLike={handleLikeThread}
+                  onOpenComments={handleOpenComments}
+                  onDelete={handleDeleteThread}
+                  canDelete={Boolean(t.can_delete ?? isAdmin)}
+                  isDeleting={deletingThreadId === t.id}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+            </>
           )}
         </div>
-      </main>
+      </ChatFirstPageBody>
 
       {/* Manage Admins Modal */}
       <ManageAdminsModal

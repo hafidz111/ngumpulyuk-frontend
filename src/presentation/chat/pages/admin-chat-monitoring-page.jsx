@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Loader2, WandSparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { chatApi } from '@/infrastructure/chat/chat-api';
 import { ROUTES } from '@/shared/config/routes';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
@@ -32,7 +34,8 @@ function formatDateTime(value) {
 }
 
 export default function AdminChatMonitoringPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -161,28 +164,6 @@ export default function AdminChatMonitoringPage() {
     [offset, pagination.total, rows.length],
   );
 
-  if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
-
-  if (!user?.isStaff) {
-    return (
-      <div className='min-h-svh bg-surface text-foreground'>
-        <HomeAppHeader />
-        <main className='mx-auto max-w-4xl px-4 py-8 md:px-6'>
-          <Card>
-            <CardHeader>
-              <CardTitle>Akses ditolak</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant='outline' className='rounded-full'>
-                <Link to={ROUTES.profile}>Kembali</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   async function submitCorrection() {
     if (!form.normalized_query.trim() || !form.corrected_reply.trim()) {
       toast.error('Isi query dan jawaban koreksi dulu.');
@@ -214,12 +195,29 @@ export default function AdminChatMonitoringPage() {
   }
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-      <main className='mx-auto max-w-6xl space-y-4 px-4 py-6 md:px-6'>
-        <div className='flex items-center justify-between gap-3'>
-          <h1 className='font-display text-2xl font-black'>Admin · Chat Monitoring</h1>
-          <div className='flex flex-wrap items-center justify-end gap-2'>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title='Admin · Chat Monitoring'
+        subtitle='Pantau log percakapan AI'
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody>
+        <div className='space-y-4'>
+        {!user?.isStaff ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Akses ditolak</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant='outline' className='rounded-full'>
+                <Link to={ROUTES.profile}>Kembali</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+        <div className='flex flex-wrap items-center justify-end gap-2'>
             <Button asChild variant='outline' className='rounded-full'>
               <Link to={ROUTES.adminChatCorrections}>Lihat Rules Koreksi</Link>
             </Button>
@@ -260,7 +258,6 @@ export default function AdminChatMonitoringPage() {
               Hapus Semua
             </Button>
           </div>
-        </div>
 
         <Card>
           <CardContent className='grid gap-3 p-4 md:grid-cols-4'>
@@ -430,7 +427,10 @@ export default function AdminChatMonitoringPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+          </>
+        )}
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

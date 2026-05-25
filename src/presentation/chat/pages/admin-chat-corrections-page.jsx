@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { chatApi } from '@/infrastructure/chat/chat-api';
 import { ROUTES } from '@/shared/config/routes';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
@@ -23,7 +25,8 @@ function rootData(raw) {
 }
 
 export default function AdminChatCorrectionsPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -115,9 +118,6 @@ export default function AdminChatCorrectionsPage() {
     };
   }, []);
 
-  if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
-  if (!user?.isStaff) return <Navigate to={ROUTES.profile} replace />;
-
   async function submitForm() {
     if (!form.normalized_query.trim()) {
       toast.error('Normalized query wajib diisi.');
@@ -178,11 +178,29 @@ export default function AdminChatCorrectionsPage() {
   }
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-      <main className='mx-auto max-w-6xl space-y-4 px-4 py-6 md:px-6'>
-        <div className='flex items-center justify-between gap-3'>
-          <h1 className='font-display text-2xl font-black'>Admin · Chat Corrections</h1>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title='Admin · Chat Corrections'
+        subtitle='Kelola rule koreksi jawaban AI'
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody>
+        <div className='space-y-4'>
+        {!user?.isStaff ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Akses ditolak</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant='outline' className='rounded-full'>
+                <Link to={ROUTES.profile}>Kembali</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+        <div className='flex justify-end'>
           <Button asChild variant='outline' className='rounded-full'>
             <Link to={ROUTES.adminChatMonitoring}>Kembali ke Monitoring</Link>
           </Button>
@@ -366,7 +384,10 @@ export default function AdminChatCorrectionsPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+          </>
+        )}
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { CheckCheck, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
 import {
@@ -161,13 +162,13 @@ export default function NotificationsPage() {
   }, [load, markAllRead]);
 
   const notificationSubtitle = unreadCount > 0
-    ? `${unreadCount} belum dibaca${total > 0 ? ` · ${total} total` : ''}`
-    : `Semua sudah dibaca${total > 0 ? ` · ${total} total` : ''}`;
+    ? SHELL_COPY.pages.notificationsSubtitleUnread(unreadCount, total)
+    : SHELL_COPY.pages.notificationsSubtitleAllRead(total);
 
   return (
-    <div className='flex min-h-0 flex-1 flex-col'>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
       <ChatFirstPageHeader
-        title='Notifikasi'
+        title={SHELL_COPY.pages.notificationsTitle}
         subtitle={notificationSubtitle}
         onOpenMenu={onOpenMenu}
         showCreateEvent={false}

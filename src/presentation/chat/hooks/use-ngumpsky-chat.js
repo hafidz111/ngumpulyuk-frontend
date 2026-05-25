@@ -134,13 +134,15 @@ export function useNgumpskyChat(enabled) {
       }
       if (loading) return;
 
-      const userMsg = { id: newId(), role: 'user', content: text };
+      const now = Date.now();
+      const userMsg = { id: newId(), role: 'user', content: text, createdAt: now };
       const assistantId = newId();
       const assistantPlaceholder = {
         id: assistantId,
         role: 'assistant',
         pending: true,
         content: '',
+        createdAt: now,
       };
 
       if (typeof overrideText !== 'string') {
@@ -165,6 +167,7 @@ export function useNgumpskyChat(enabled) {
                   ...m,
                   pending: false,
                   content: mapped.reply,
+                  createdAt: Date.now(),
                   traceId: mapped.traceId,
                   intent: mapped.intent,
                   cards: mapped.cards,
@@ -239,6 +242,7 @@ export function useNgumpskyChat(enabled) {
                   ...m,
                   pending: false,
                   content: mapped.reply,
+                  createdAt: Date.now(),
                   traceId: mapped.traceId,
                   intent: mapped.intent,
                   cards: mapped.cards,

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 
 import { usersApi } from '@/infrastructure/users/users-api';
 import { useAuth } from '../auth/hooks/use-auth';
-import { HomeAppHeader } from './components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { HomeRecommendedSection } from './components/home-recommended-section';
 import { HomeUpcomingSection } from './components/home-upcoming-section';
 import { HomeWelcomeSection } from './components/home-welcome-section';
@@ -15,6 +17,7 @@ function extractActiveEventIds(payload) {
 
 export default function HomePage() {
   const { user } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const [activeEventIds, setActiveEventIds] = useState(() => new Set());
 
   useEffect(() => {
@@ -35,13 +38,20 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-      <main className='mx-auto max-w-6xl space-y-8 px-4 py-8 md:space-y-10 md:px-6 md:py-10'>
-        <HomeWelcomeSection displayName={user?.displayName} />
-        <HomeRecommendedSection activeEventIds={activeEventIds} />
-        <HomeUpcomingSection activeEventIds={activeEventIds} />
-      </main>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title='Beranda'
+        subtitle='Rekomendasi dan event yang akan datang'
+        onOpenMenu={onOpenMenu}
+        showCreateEvent
+      />
+      <ChatFirstPageBody>
+        <div className='space-y-8 md:space-y-10'>
+          <HomeWelcomeSection displayName={user?.displayName} />
+          <HomeRecommendedSection activeEventIds={activeEventIds} />
+          <HomeUpcomingSection activeEventIds={activeEventIds} />
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

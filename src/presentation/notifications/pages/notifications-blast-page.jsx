@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Loader2, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -7,8 +7,11 @@ import { mapInterestsTaxonomyResponse } from '@/application/users/map-interests-
 import { notificationsApi } from '@/infrastructure/notifications/notifications-api';
 import { usersApi } from '@/infrastructure/users/users-api';
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
 import {
@@ -37,7 +40,8 @@ function mapUsersResponse(raw) {
 }
 
 export default function NotificationsBlastPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
@@ -132,33 +136,6 @@ export default function NotificationsBlastPage() {
     };
   }, [interestRows.length, targetMode]);
 
-  if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />;
-  }
-
-  if (!user?.isStaff) {
-    return (
-      <div className='min-h-svh bg-surface text-foreground'>
-        <HomeAppHeader />
-        <main className='mx-auto flex max-w-3xl px-4 py-10 md:px-6'>
-          <Card className='w-full rounded-3xl border-border/60 bg-white'>
-            <CardHeader>
-              <CardTitle>Akses ditolak</CardTitle>
-              <CardDescription>
-                Halaman ini hanya untuk admin/staff.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant='outline' className='rounded-full'>
-                <Link to={ROUTES.notifications}>Kembali ke notifikasi</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canSubmit) return;
@@ -246,16 +223,36 @@ export default function NotificationsBlastPage() {
   }
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-      <main className='mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-10'>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={SHELL_COPY.pages.notificationsBlastTitle}
+        subtitle={SHELL_COPY.pages.notificationsBlastSubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody>
+        <div className='mx-auto max-w-3xl'>
+        {!user?.isStaff ? (
+          <Card className='w-full rounded-3xl border-border/60 bg-white'>
+            <CardHeader>
+              <CardTitle>Akses ditolak</CardTitle>
+              <CardDescription>
+                Halaman ini hanya untuk admin/staff.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant='outline' className='rounded-full'>
+                <Link to={ROUTES.notifications}>Kembali ke notifikasi</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
         <Card className='rounded-3xl border-border/60 bg-white'>
           <CardHeader className='space-y-2'>
             <div className='inline-flex w-fit items-center gap-2 rounded-full bg-[#FFF1E5] px-3 py-1 text-xs font-bold text-[#FF8000]'>
               <Megaphone className='size-3.5' />
               ADMIN ONLY
             </div>
-            <CardTitle className='font-display text-2xl'>Blast Notifikasi</CardTitle>
             <CardDescription>
               Kirim notifikasi massal ke user tertentu atau ke semua user aktif.
             </CardDescription>
@@ -486,7 +483,9 @@ export default function NotificationsBlastPage() {
             </form>
           </CardContent>
         </Card>
-      </main>
+        )}
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

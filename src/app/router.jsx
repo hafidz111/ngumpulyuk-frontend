@@ -80,7 +80,6 @@ const ChatMainView = lazy(
 const ChatFirstLayout = lazy(
   () => import('../presentation/layout/chat-first-layout.jsx'),
 );
-const HomePage = lazy(() => import('../presentation/home/home-page.jsx'));
 const NotFoundPage = lazy(
   () => import('../presentation/error-pages/not-found-page.jsx'),
 );
@@ -142,7 +141,7 @@ const router = createBrowserRouter([
     element: suspense(<ChatFirstLayout />),
     children: [
       { path: ROUTES.chat, element: suspense(<ChatMainView />) },
-      { path: ROUTES.feed, element: suspense(<HomePage />) },
+      { path: ROUTES.feed, element: <Navigate to={ROUTES.chat} replace /> },
       { path: ROUTES.explore, element: <Navigate to={ROUTES.events} replace /> },
       { path: ROUTES.events, element: suspense(<EventsListPage />) },
       { path: ROUTES.eventCreate, element: suspense(<EventCreatePage />) },

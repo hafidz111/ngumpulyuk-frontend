@@ -114,7 +114,7 @@ export default function VerifyEmailPage() {
                   ) === '1',
               );
         toast.success('Email terverifikasi.', { duration: 4000 });
-        navigate(isOnboarded ? ROUTES.home : ROUTES.onboarding, {
+        navigate(isOnboarded ? ROUTES.chat : ROUTES.onboarding, {
           replace: true,
         });
         return;

@@ -1,17 +1,154 @@
-import { useRef, useState, useEffect } from 'react';
-import { ImagePlus, Loader2, Sparkles, X } from 'lucide-react';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { Check, ChevronDown, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { cn } from '@/lib/utils';
+import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { Card } from '@/presentation/components/ui/card';
 import { Button } from '@/presentation/components/ui/button';
+import { ThemedSearchField } from '@/presentation/components/themed-search-field';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select';
 import { uploadThreadImage } from '@/infrastructure/storage/image-upload';
 
 const MAX_THREAD_IMAGES = 3;
 const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
+const FEED_COMMUNITY = 'feed';
+const PILL_THRESHOLD = 4;
 
+/**
+ * @param {{
+ *   options: { id: string; label: string }[];
+ *   value: string;
+ *   onChange: (id: string) => void;
+ *   feedValue: string;
+ *   feedLabel: string;
+ *   searchPlaceholder: string;
+ *   emptyLabel: string;
+ *   manyHint: (n: number) => string;
+ * }} props
+ */
+function SearchableOptionList({
+  options,
+  value,
+  onChange,
+  feedValue,
+  feedLabel,
+  searchPlaceholder,
+  emptyLabel,
+  manyHint,
+}) {
+  const [query, setQuery] = useState('');
+  const usePills = options.length <= PILL_THRESHOLD;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  if (usePills) {
+    return (
+      <div className='flex flex-wrap gap-2'>
+        <OptionPill
+          active={value === feedValue}
+          label={feedLabel}
+          onClick={() => onChange(feedValue)}
+        />
+        {options.map((o) => (
+          <OptionPill
+            key={o.id}
+            active={value === o.id}
+            label={o.label}
+            onClick={() => onChange(o.id)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-2'>
+      <p className='text-[11px] text-muted-foreground'>{manyHint(options.length)}</p>
+      <ThemedSearchField
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={searchPlaceholder}
+        inputClassName='h-10 rounded-2xl pl-10 text-sm'
+      />
+      <div
+        className='max-h-44 space-y-1 overflow-y-auto overscroll-contain rounded-xl border border-border/50 bg-muted/20 p-1 [scrollbar-width:thin]'
+        role='listbox'
+      >
+        <OptionRow
+          active={value === feedValue}
+          label={feedLabel}
+          onClick={() => onChange(feedValue)}
+        />
+        {filtered.length === 0 ? (
+          <p className='px-3 py-4 text-center text-xs text-muted-foreground'>{emptyLabel}</p>
+        ) : (
+          filtered.map((o) => (
+            <OptionRow
+              key={o.id}
+              active={value === o.id}
+              label={o.label}
+              onClick={() => onChange(o.id)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OptionPill({ active, label, onClick }) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      className={cn(
+        'max-w-full truncate rounded-full px-3 py-1.5 text-xs font-semibold transition',
+        active
+          ? 'bg-[#FF8000] text-white'
+          : 'bg-muted/60 text-foreground hover:bg-muted',
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function OptionRow({ active, label, onClick }) {
+  return (
+    <button
+      type='button'
+      role='option'
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition',
+        active
+          ? 'bg-[#FF8000]/10 text-[#FF8000]'
+          : 'text-foreground hover:bg-white/80',
+      )}
+    >
+      <span className='min-w-0 truncate'>{label}</span>
+      {active ? <Check className='size-4 shrink-0' aria-hidden /> : null}
+    </button>
+  );
+}
+
+/**
+ * @param {{
+ *   onPost: (payload: Record<string, unknown>) => Promise<void>;
+ *   communities?: { id: string|number; name: string }[];
+ *   events?: { id: string|number; title: string }[];
+ *   autoSelectSingleCommunity?: boolean;
+ * }} props
+ */
 export function ThreadComposer({
   onPost,
   communities = [],
@@ -20,21 +157,49 @@ export function ThreadComposer({
 }) {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState('');
   const [posting, setPosting] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [selectedCommunity, setSelectedCommunity] = useState('optional');
-  const [selectedEvent, setSelectedEvent] = useState('');
+  const [showCirclePicker, setShowCirclePicker] = useState(false);
+  const [showEventPicker, setShowEventPicker] = useState(false);
+  const [selectedCommunity, setSelectedCommunity] = useState(FEED_COMMUNITY);
+  const [selectedEvent, setSelectedEvent] = useState('none');
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
 
+  const lockedCommunity = useMemo(() => {
+    if (!autoSelectSingleCommunity || communities.length !== 1) return null;
+    return communities[0];
+  }, [autoSelectSingleCommunity, communities]);
+
+  const communityOptions = useMemo(
+    () =>
+      communities.map((c) => ({
+        id: String(c.id),
+        label: String(c.name || 'Circle'),
+      })),
+    [communities],
+  );
+
+  const eventOptions = useMemo(
+    () =>
+      events.map((ev) => ({
+        id: String(ev.id),
+        label: String(ev.title || 'Event'),
+      })),
+    [events],
+  );
+
+  const canPickCircle = !lockedCommunity && communityOptions.length > 0;
+  const hasEvents = eventOptions.length > 0;
+
   useEffect(() => {
-    if (autoSelectSingleCommunity && communities?.length === 1) {
-      setSelectedCommunity(String(communities[0].id));
-    } else if (!autoSelectSingleCommunity) {
-      setSelectedCommunity('optional');
+    if (lockedCommunity) {
+      setSelectedCommunity(String(lockedCommunity.id));
+      return;
     }
-  }, [communities, autoSelectSingleCommunity]);
+    setSelectedCommunity(FEED_COMMUNITY);
+  }, [lockedCommunity]);
 
   function displayName() {
     return (
@@ -76,16 +241,13 @@ export function ThreadComposer({
     const picked = Array.from(event.target.files || []);
     if (picked.length === 0) return;
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    const currentCount = imageFiles.length;
-    const allowedCount = Math.max(0, MAX_THREAD_IMAGES - currentCount);
-    const filtered = picked.filter((file) => {
-      if (!validTypes.includes(file.type)) return false;
-      if (file.size > MAX_IMAGE_SIZE) return false;
-      return true;
-    }).slice(0, allowedCount);
+    const allowedCount = Math.max(0, MAX_THREAD_IMAGES - imageFiles.length);
+    const filtered = picked
+      .filter((file) => validTypes.includes(file.type) && file.size <= MAX_IMAGE_SIZE)
+      .slice(0, allowedCount);
 
     if (filtered.length < picked.length) {
-      toast.error('Maksimal 3 gambar. Format: PNG/JPG/WEBP, ukuran <= 3MB.');
+      toast.error(SHELL_COPY.threadComposer.imageError);
     }
     if (filtered.length === 0) {
       event.target.value = '';
@@ -93,39 +255,58 @@ export function ThreadComposer({
     }
 
     setImageFiles((prev) => [...prev, ...filtered]);
-    setImagePreviews((prev) => [...prev, ...filtered.map((file) => URL.createObjectURL(file))]);
+    setImagePreviews((prev) => [
+      ...prev,
+      ...filtered.map((file) => URL.createObjectURL(file)),
+    ]);
     event.target.value = '';
   }
 
   function removeImage(index) {
+    setImagePreviews((prev) => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, idx) => idx !== index);
+    });
     setImageFiles((prev) => prev.filter((_, idx) => idx !== index));
-    setImagePreviews((prev) => prev.filter((_, idx) => idx !== index));
+  }
+
+  function resetForm() {
+    setExpanded(false);
+    setContent('');
+    setSelectedEvent('none');
+    setShowCirclePicker(false);
+    setShowEventPicker(false);
+    imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setImageFiles([]);
+    setImagePreviews([]);
+    if (lockedCommunity) {
+      setSelectedCommunity(String(lockedCommunity.id));
+    } else {
+      setSelectedCommunity(FEED_COMMUNITY);
+    }
   }
 
   async function handlePost() {
     if (!content.trim()) return;
     setPosting(true);
     try {
-      const normalizedEvent = selectedEvent && selectedEvent !== 'none' ? selectedEvent : undefined;
-      const normalizedCommunity =
-        selectedCommunity !== 'optional'
-          ? selectedCommunity
-          : undefined;
-      const uploadedImages = imageFiles.length > 0
-        ? await Promise.all(imageFiles.map((file) => uploadThreadImage(file)))
-        : [];
+      const communityId =
+        selectedCommunity !== FEED_COMMUNITY ? selectedCommunity : undefined;
+      const eventId =
+        selectedEvent && selectedEvent !== 'none' ? selectedEvent : undefined;
+      const uploadedImages =
+        imageFiles.length > 0
+          ? await Promise.all(imageFiles.map((file) => uploadThreadImage(file)))
+          : [];
+
       await onPost({
         content: content.trim(),
         images: uploadedImages,
-        ...(normalizedCommunity ? { community_id: normalizedCommunity } : {}),
-        ...(normalizedEvent ? { related_event_id: normalizedEvent } : {}),
+        ...(communityId ? { community_id: communityId } : {}),
+        ...(eventId ? { related_event_id: eventId } : {}),
       });
-      setContent('');
-      setSelectedCommunity(autoSelectSingleCommunity && communities?.length === 1 ? String(communities[0].id) : 'optional');
-      setSelectedEvent('');
-      setImageFiles([]);
-      setImagePreviews([]);
-      setExpanded(false);
+      resetForm();
     } catch {
       // error handled by parent
     } finally {
@@ -133,135 +314,273 @@ export function ThreadComposer({
     }
   }
 
+  const placeholder = lockedCommunity
+    ? SHELL_COPY.threadComposer.placeholderCommunity(lockedCommunity.name)
+    : SHELL_COPY.threadComposer.placeholder;
+
+  const selectedCircleName =
+    selectedCommunity === FEED_COMMUNITY
+      ? SHELL_COPY.threadComposer.circleFeed
+      : communityOptions.find((c) => c.id === selectedCommunity)?.label;
+
+  const selectedEventName =
+    selectedEvent === 'none'
+      ? null
+      : eventOptions.find((e) => e.id === selectedEvent)?.label;
+
+  const circleButtonLabel =
+    selectedCommunity !== FEED_COMMUNITY && selectedCircleName
+      ? selectedCircleName
+      : SHELL_COPY.threadComposer.pickCircle;
+
+  const eventButtonLabel = selectedEventName || SHELL_COPY.threadComposer.pickEvent;
+
   return (
-    <Card className='border border-border/70 bg-gradient-to-b from-card to-card/80 p-4 shadow-sm'>
+    <Card className='overflow-hidden border border-[#FF8000]/15 bg-gradient-to-b from-[#FFF1E5]/40 to-white p-4 shadow-sm'>
       <div className='flex items-start gap-3'>
-        <Avatar className='size-10 shrink-0'>
-          <AvatarFallback className={`${colorClassForUser(user)} text-sm font-bold`}>
+        <Avatar className='size-10 shrink-0 ring-2 ring-white'>
+          <AvatarFallback
+            className={`${colorClassForUser(user)} text-sm font-bold`}
+          >
             {initial()}
           </AvatarFallback>
         </Avatar>
 
-        {!expanded ? (
-          <div className='w-full'>
+        <div className='min-w-0 flex-1 space-y-3'>
+          {!expanded ? (
             <button
               type='button'
               onClick={() => setExpanded(true)}
-              className='flex h-11 w-full items-center rounded-full border border-border/70 bg-muted/30 px-5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted/50'
+              className='flex h-12 w-full items-center rounded-full border border-border/60 bg-white px-4 text-left text-sm text-muted-foreground shadow-sm transition hover:border-border hover:bg-muted/30'
             >
-              Tulis thread baru...
+              {lockedCommunity
+                ? SHELL_COPY.threadComposer.placeholderCommunity(lockedCommunity.name)
+                : SHELL_COPY.threadComposer.expandPrompt}
             </button>
-          </div>
-        ) : (
-          <div className='flex-1 space-y-3 w-full animate-in fade-in slide-in-from-top-2 duration-200'>
-            <div className='grid gap-2 rounded-xl border border-border/60 bg-background/60 p-2 sm:grid-cols-2'>
-              <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
-                <SelectTrigger className='h-9 w-full rounded-lg border-border/60 bg-card text-xs font-medium'>
-                  <SelectValue placeholder='Komunitas (opsional)' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='optional'>Pilih komunitas (opsional)</SelectItem>
-                  {communities.length > 0 ? (
-                    communities.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value='none' disabled>Belum ada komunitas tersedia</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                <SelectTrigger className='h-9 w-full rounded-lg border-border/60 bg-card text-xs font-medium'>
-                  <SelectValue placeholder='Link ke event (opsional)' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='none'>Tanpa event</SelectItem>
-                  {events?.map((ev) => (
-                    <SelectItem key={ev.id} value={String(ev.id)}>{ev.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          ) : (
+            <>
+          {lockedCommunity ? (
+            <span className='inline-flex max-w-full items-center rounded-full bg-[#FF8000]/10 px-3 py-1 text-xs font-semibold text-[#FF8000]'>
+              {SHELL_COPY.threadComposer.postingIn(lockedCommunity.name)}
+            </span>
+          ) : null}
 
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder='Apa yang lagi kamu pikirin?'
-              className='min-h-[110px] w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground focus:outline-none'
-              maxLength={2000}
-              autoFocus
-            />
-
-            {imagePreviews.length > 0 ? (
-              <div className='grid grid-cols-3 gap-2'>
-                {imagePreviews.map((preview, idx) => (
-                  <div key={`${preview}-${idx}`} className='relative overflow-hidden rounded-lg border border-border/60'>
-                    <img src={preview} alt='' className='h-24 w-full object-cover' />
-                    <button
-                      type='button'
-                      onClick={() => removeImage(idx)}
-                      className='absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-black/60 text-white'
-                      aria-label='Hapus gambar'
-                    >
-                      <X className='size-3.5' />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <div className='mt-1 flex items-center justify-between border-t border-border/40 pt-2'>
-              <div className='inline-flex items-center gap-1 text-xs text-muted-foreground'>
-                <Sparkles className='size-3.5' />
-                Komunitas opsional, kamu tetap bisa post ke feed global.
-              </div>
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type='file'
-                  accept='image/png, image/jpeg, image/jpg, image/webp'
-                  multiple
-                  className='sr-only'
-                  onChange={handleSelectImages}
-                />
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={posting || imageFiles.length >= MAX_THREAD_IMAGES}
-                  className='rounded-full'
-                >
-                  <ImagePlus className='size-4' />
-                  Gambar ({imageFiles.length}/{MAX_THREAD_IMAGES})
-                </Button>
-              </div>
+          {!lockedCommunity && selectedCommunity !== FEED_COMMUNITY && selectedCircleName ? (
+            <span className='inline-flex max-w-full items-center gap-1 rounded-full bg-[#FF8000]/10 px-3 py-1 text-xs font-semibold text-[#FF8000]'>
+              <span className='truncate'>
+                {SHELL_COPY.threadComposer.selectedCircle(selectedCircleName)}
+              </span>
               <button
                 type='button'
-                onClick={() => {
-                  setExpanded(false);
-                  setContent('');
-                  setSelectedCommunity(autoSelectSingleCommunity && communities?.length === 1 ? String(communities[0].id) : 'optional');
-                  setSelectedEvent('');
-                  setImageFiles([]);
-                  setImagePreviews([]);
-                }}
-                className='text-xs font-medium text-muted-foreground transition-colors hover:text-foreground'
+                onClick={() => setSelectedCommunity(FEED_COMMUNITY)}
+                className='shrink-0 rounded-full p-0.5 hover:bg-[#FF8000]/20'
+                aria-label='Ganti ke feed umum'
               >
-                Batal
+                <X className='size-3' />
               </button>
+            </span>
+          ) : null}
+
+          {selectedEventName ? (
+            <span className='inline-flex max-w-full items-center gap-1 rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-700'>
+              <span className='truncate'>Event: {selectedEventName}</span>
+              <button
+                type='button'
+                onClick={() => setSelectedEvent('none')}
+                className='shrink-0 rounded-full p-0.5 hover:bg-sky-500/20'
+                aria-label='Hapus link event'
+              >
+                <X className='size-3' />
+              </button>
+            </span>
+          ) : null}
+
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={placeholder}
+            rows={3}
+            autoFocus
+            className='min-h-[88px] w-full resize-none rounded-2xl border border-border/60 bg-white px-4 py-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-[#FF8000]/50 focus:outline-none focus:ring-2 focus:ring-[#FF8000]/15'
+            maxLength={2000}
+          />
+
+          {imagePreviews.length > 0 ? (
+            <div className='flex flex-wrap gap-2'>
+              {imagePreviews.map((preview, idx) => (
+                <div
+                  key={`${preview}-${idx}`}
+                  className='relative size-20 overflow-hidden rounded-xl border border-border/60'
+                >
+                  <img src={preview} alt='' className='h-full w-full object-cover' />
+                  <button
+                    type='button'
+                    onClick={() => removeImage(idx)}
+                    className='absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-black/65 text-white'
+                    aria-label='Hapus gambar'
+                  >
+                    <X className='size-3.5' />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {showCirclePicker && canPickCircle ? (
+            <div className='rounded-2xl border border-border/60 bg-white p-3 shadow-sm'>
+              <p className='mb-2 text-xs font-semibold text-muted-foreground'>
+                {SHELL_COPY.threadComposer.circleLabel}
+              </p>
+              <SearchableOptionList
+                options={communityOptions}
+                value={selectedCommunity}
+                onChange={setSelectedCommunity}
+                feedValue={FEED_COMMUNITY}
+                feedLabel={SHELL_COPY.threadComposer.circleFeed}
+                searchPlaceholder={SHELL_COPY.threadComposer.circleSearchPlaceholder}
+                emptyLabel={SHELL_COPY.threadComposer.circleNotFound}
+                manyHint={SHELL_COPY.threadComposer.circleManyHint}
+              />
+            </div>
+          ) : null}
+
+          {showEventPicker ? (
+            <div className='rounded-2xl border border-sky-200/60 bg-sky-50/40 p-3'>
+              <p className='mb-2 text-xs font-semibold text-muted-foreground'>
+                {SHELL_COPY.threadComposer.eventLabel}
+              </p>
+              {hasEvents ? (
+                <SearchableOptionList
+                  options={eventOptions}
+                  value={selectedEvent}
+                  onChange={setSelectedEvent}
+                  feedValue='none'
+                  feedLabel={SHELL_COPY.threadComposer.eventNone}
+                  searchPlaceholder={SHELL_COPY.threadComposer.eventSearchPlaceholder}
+                  emptyLabel={SHELL_COPY.threadComposer.eventNotFound}
+                  manyHint={SHELL_COPY.threadComposer.eventManyHint}
+                />
+              ) : (
+                <div className='space-y-3 rounded-xl border border-dashed border-sky-200 bg-white px-4 py-5 text-center'>
+                  <p className='text-sm font-semibold text-foreground'>
+                    {SHELL_COPY.threadComposer.eventEmptyTitle}
+                  </p>
+                  <p className='text-xs text-muted-foreground'>
+                    {SHELL_COPY.threadComposer.eventEmptyHint}
+                  </p>
+                  <Button
+                    asChild
+                    variant='outline'
+                    size='sm'
+                    className='rounded-full border-sky-300 text-sky-800'
+                  >
+                    <Link to={ROUTES.events}>{SHELL_COPY.threadComposer.eventExploreCta}</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {!lockedCommunity && !showCirclePicker && selectedCommunity === FEED_COMMUNITY ? (
+            <p className='text-[11px] leading-relaxed text-muted-foreground'>
+              {canPickCircle
+                ? SHELL_COPY.threadComposer.feedHint
+                : SHELL_COPY.threadComposer.circleNone}
+            </p>
+          ) : null}
+
+          <div className='flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-3'>
+            <div className='flex min-w-0 flex-1 flex-wrap items-center gap-1.5'>
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='image/png,image/jpeg,image/jpg,image/webp'
+                multiple
+                className='sr-only'
+                onChange={handleSelectImages}
+              />
               <Button
                 type='button'
-                onClick={handlePost}
-                disabled={!content.trim() || posting}
-                className='h-9 rounded-full bg-primary-container px-6 font-semibold text-primary-foreground shadow-sm hover:bg-primary-container/90'
+                variant='outline'
+                size='sm'
+                onClick={() => fileInputRef.current?.click()}
+                disabled={posting || imageFiles.length >= MAX_THREAD_IMAGES}
+                className='h-9 rounded-full border-border/60 px-3 text-xs font-semibold'
               >
-                {posting ? <Loader2 className='size-3.5 mr-1.5 animate-spin' /> : null}
-                Post Thread
+                <ImagePlus className='size-4 shrink-0' />
+                {SHELL_COPY.threadComposer.photo}
+                {imageFiles.length > 0
+                  ? ` ${SHELL_COPY.threadComposer.photoCount(imageFiles.length, MAX_THREAD_IMAGES)}`
+                  : ''}
+              </Button>
+
+              {canPickCircle ? (
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => {
+                    setShowCirclePicker((v) => !v);
+                    if (showEventPicker) setShowEventPicker(false);
+                  }}
+                  className={cn(
+                    'h-9 max-w-[140px] rounded-full px-3 text-xs font-semibold sm:max-w-[180px]',
+                    (showCirclePicker || selectedCommunity !== FEED_COMMUNITY) &&
+                      'bg-[#FFF1E5] text-[#FF8000]',
+                  )}
+                  title={circleButtonLabel}
+                >
+                  <span className='truncate'>{circleButtonLabel}</span>
+                  <ChevronDown
+                    className={cn(
+                      'ml-1 size-3.5 shrink-0 transition',
+                      showCirclePicker && 'rotate-180',
+                    )}
+                  />
+                </Button>
+              ) : null}
+
+              <Button
+                type='button'
+                variant='ghost'
+                size='sm'
+                onClick={() => {
+                  setShowEventPicker((v) => !v);
+                  if (showCirclePicker) setShowCirclePicker(false);
+                }}
+                className={cn(
+                  'h-9 max-w-[160px] rounded-full px-3 text-xs font-semibold sm:max-w-[200px]',
+                  (showEventPicker || selectedEvent !== 'none') &&
+                    'bg-sky-50 text-sky-700 ring-1 ring-sky-200/80',
+                )}
+                title={eventButtonLabel}
+              >
+                <span className='truncate'>{eventButtonLabel}</span>
+                <ChevronDown
+                  className={cn(
+                    'ml-1 size-3.5 shrink-0 transition',
+                    showEventPicker && 'rotate-180',
+                  )}
+                />
               </Button>
             </div>
+
+            <Button
+              type='button'
+              onClick={handlePost}
+              disabled={!content.trim() || posting}
+              className='h-10 shrink-0 rounded-full bg-[#FF8000] px-6 text-sm font-bold text-white shadow-sm hover:bg-[#FF8000]/90 disabled:opacity-50'
+            >
+              {posting ? (
+                <Loader2 className='size-4 animate-spin' />
+              ) : (
+                SHELL_COPY.threadComposer.postButton
+              )}
+            </Button>
           </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </Card>
   );

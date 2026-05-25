@@ -24,7 +24,9 @@ export function isEmailNotVerifiedLoginError(error) {
       : '';
   return (
     msg.includes('not verified') ||
+    msg.includes('belum diverifikasi') ||
     detailStr.includes('not verified') ||
+    detailStr.includes('belum diverifikasi') ||
     msg.includes('email is not verified')
   );
 }

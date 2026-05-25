@@ -1,13 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
-import { Calendar, CheckCircle2, Clock3, Loader2, MapPin, PencilLine, Save, ShieldCheck, Users } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  Calendar,
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  LogOut,
+  MapPin,
+  PencilLine,
+  Save,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { usersApi } from '@/infrastructure/users/users-api';
 import { eventsApi } from '@/infrastructure/events/events-api';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Card } from '@/presentation/components/ui/card';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
@@ -100,7 +114,10 @@ function isUpcomingEvent(eventDetail) {
 
 export default function ProfilePage() {
   const { username } = useParams();
-  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
+  const [logoutPending, setLogoutPending] = useState(false);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -269,24 +286,44 @@ export default function ProfilePage() {
     [eventParticipationActivities, relatedEvents],
   );
 
-  if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />;
+  const profileTitle = loading
+    ? SHELL_COPY.pages.profileLoadingTitle
+    : (isPublicProfile ? displayName : SHELL_COPY.pages.profileMyTitle);
+  const profileSubtitle = loading
+    ? SHELL_COPY.pages.profileLoadingSubtitle
+    : (profile ? `@${profile.username}` : SHELL_COPY.pages.profileNotFound);
+
+  async function handleLogout() {
+    if (logoutPending) return;
+    setLogoutPending(true);
+    try {
+      await logout();
+      navigate(ROUTES.login, { replace: true });
+    } finally {
+      setLogoutPending(false);
+    }
   }
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-      <main className='mx-auto max-w-5xl space-y-6 px-4 py-8 md:px-6 md:py-10'>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={profileTitle}
+        subtitle={profileSubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody>
+        <div className='mx-auto max-w-5xl space-y-6'>
         {loading ? (
           <div className='flex items-center justify-center py-24'>
             <Loader2 className='size-8 animate-spin text-primary-container' />
           </div>
         ) : !profile ? (
           <Card className='border border-border/80 bg-card p-8 text-center'>
-            <p className='text-muted-foreground'>Profil tidak ditemukan.</p>
+            <p className='text-muted-foreground'>{SHELL_COPY.pages.profileNotFound}</p>
             {!isPublicProfile ? (
               <Button asChild variant='outline' className='mt-4 rounded-full'>
-                <Link to={ROUTES.home}>Kembali ke Home</Link>
+                <Link to={ROUTES.chat}>Kembali ke Chat</Link>
               </Button>
             ) : null}
           </Card>
@@ -491,9 +528,38 @@ export default function ProfilePage() {
                 ) : null}
               </div>
             ) : null}
+
+            {!isPublicProfile ? (
+              <Card className='overflow-hidden border border-border/60 bg-white lg:hidden'>
+                <div className='border-b border-border/50 bg-[#FFF1E5]/40 px-4 py-3'>
+                  <p className='text-xs font-bold uppercase tracking-wide text-[#FF8000]'>
+                    Akun
+                  </p>
+                  <p className='mt-1 text-sm text-muted-foreground'>
+                    Keluar kalau mau ganti akun atau selesai ngumpul
+                  </p>
+                </div>
+                <div className='p-3'>
+                  <button
+                    type='button'
+                    disabled={logoutPending}
+                    onClick={() => void handleLogout()}
+                    className='flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF8000] text-sm font-bold text-white shadow-sm transition hover:bg-[#FF8000]/90 active:scale-[0.99] disabled:opacity-60'
+                  >
+                    {logoutPending ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <LogOut className='size-4' />
+                    )}
+                    Keluar akun
+                  </button>
+                </div>
+              </Card>
+            ) : null}
           </>
         )}
-      </main>
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   MapContainer,
   TileLayer,
@@ -16,7 +16,6 @@ import {
   Loader2,
   MapPin,
   Navigation,
-  Search,
   Users,
   X,
   Zap,
@@ -25,11 +24,12 @@ import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { eventsApi } from '@/infrastructure/events/events-api';
-import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Button } from '@/presentation/components/ui/button';
-import { Input } from '@/presentation/components/ui/input';
+import { ThemedSearchField } from '@/presentation/components/themed-search-field';
 import {
   Select,
   SelectContent,
@@ -39,11 +39,10 @@ import {
 } from '@/presentation/components/ui/select';
 import {
   extractEventCategories,
-  EVENT_STATUS_OPTIONS,
-  AREA_OPTIONS,
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
 } from '@/presentation/events/event-data';
+import { parseEventsListResponse } from '@/presentation/events/lib/parse-events-list-response';
 import { formatEventDateRange, formatTimeId, formatLocation } from '@/shared/lib/formatters';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -171,7 +170,7 @@ function geolocationErrorMessage(error) {
 }
 
 export default function EventMapPage() {
-  const { isAuthenticated } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const navigate = useNavigate();
 
   const [allEvents, setAllEvents] = useState([]);
@@ -184,8 +183,6 @@ export default function EventMapPage() {
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [status, setStatus] = useState('');
-  const [area, setArea] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -198,13 +195,13 @@ export default function EventMapPage() {
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await eventsApi.list({ limit: 200, offset: 0 });
-      const payload = res.data?.data || res.data;
-      let arr = [];
-      if (Array.isArray(payload)) arr = payload;
-      else if (payload?.events) arr = payload.events;
-      else if (payload?.results) arr = payload.results;
-      setAllEvents(arr);
+      const res = await eventsApi.list({
+        limit: 200,
+        offset: 0,
+        status: 'upcoming',
+      });
+      const { events } = parseEventsListResponse(res.data);
+      setAllEvents(events);
     } catch {
       setAllEvents([]);
     } finally {
@@ -289,9 +286,6 @@ export default function EventMapPage() {
       const selected = category.trim().toLowerCase();
       list = list.filter((e) => e.category && e.category.toLowerCase() === selected);
     }
-    if (status && status.trim()) list = list.filter((e) => e.status === status.trim());
-    if (area && area.trim()) list = list.filter((e) => e.location_area === area.trim());
-
     const [refLat, refLng] = userPos || DEFAULT_MAP_CENTER;
     list = [...list].sort((a, b) => {
       const dA = haversineKm(refLat, refLng, parseFloat(a.latitude), parseFloat(a.longitude));
@@ -300,7 +294,7 @@ export default function EventMapPage() {
     });
 
     return list;
-  }, [allEvents, search, category, status, area, userPos]);
+  }, [allEvents, search, category, userPos]);
 
   const totalPages = Math.ceil(filteredEvents.length / PAGE_SIZE);
   const pageEvents = useMemo(
@@ -312,7 +306,7 @@ export default function EventMapPage() {
     setPage(0);
     setSelectedEvent(null);
     setPopupPixel(null);
-  }, [search, category, status, area, userPos]);
+  }, [search, category, userPos]);
 
   function handleLocateMe() {
     if (!navigator.geolocation) return;
@@ -339,7 +333,7 @@ export default function EventMapPage() {
     setPopupPixel(null);
   }
 
-  const hasActiveFilters = search || category || status || area;
+  const hasActiveFilters = search || category;
   const eventCategories = useMemo(
     () => extractEventCategories(allEvents),
     [allEvents],
@@ -348,8 +342,6 @@ export default function EventMapPage() {
   function clearFilters() {
     setSearch('');
     setCategory('');
-    setStatus('');
-    setArea('');
   }
 
   const userIcon = useMemo(
@@ -367,26 +359,26 @@ export default function EventMapPage() {
     [],
   );
 
-  if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
-
   return (
-    <div className='flex min-h-svh flex-col bg-surface text-foreground'>
-      <HomeAppHeader />
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={SHELL_COPY.pages.mapTitle}
+        subtitle={SHELL_COPY.pages.mapSubtitle}
+        onOpenMenu={onOpenMenu}
+      />
 
-      <div className='relative flex-1' style={{ minHeight: 'calc(100svh - 4rem)' }}>
+      <div className='relative min-h-0 flex-1'>
         <div className='absolute left-0 right-0 top-0 z-[1000] pointer-events-none'>
           <div className='pointer-events-auto mx-auto mt-3 flex max-w-4xl items-start gap-2 px-3'>
             <div className='flex flex-1 flex-col gap-2'>
-              <div className='flex items-center gap-2 overflow-hidden rounded-2xl border border-border/60 bg-surface-bright/95 p-1.5 shadow-xl backdrop-blur-md'>
-                <div className='relative flex-1'>
-                  <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder='Cari event...'
-                    className='h-10 border-0 bg-transparent pl-9 text-sm shadow-none focus-visible:ring-0'
-                  />
-                </div>
+              <div className='flex items-center gap-2 overflow-hidden rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-md'>
+                <ThemedSearchField
+                  className='flex-1'
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder='Cari event...'
+                  inputClassName='h-10 rounded-xl border-0 bg-transparent pl-10 shadow-none focus:border-transparent focus:ring-0'
+                />
                 <Button
                   type='button'
                   variant='ghost'
@@ -415,8 +407,8 @@ export default function EventMapPage() {
                     </span>
                   ) : (
                     <>
-                      <span className='font-semibold text-foreground'>{filteredEvents.length}</span> event ditemukan
-                      {userPos ? ' · diurutkan berdasarkan jarak' : ''}
+                      {SHELL_COPY.pages.mapEventsFound(filteredEvents.length)}
+                      {userPos ? SHELL_COPY.pages.mapEventsFoundDistance : ''}
                     </>
                   )}
                 </span>

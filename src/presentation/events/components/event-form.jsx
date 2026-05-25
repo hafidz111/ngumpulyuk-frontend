@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { format } from 'date-fns';
+import { format, isBefore, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -22,8 +22,19 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/presentation/components/ui/button';
 import { Calendar } from '@/presentation/components/ui/calendar';
 import { Card } from '@/presentation/components/ui/card';
-import { Input } from '@/presentation/components/ui/input';
+import { RequiredMark } from '@/presentation/components/required-mark';
+import { ThemedInput, ThemedTextarea } from '@/presentation/components/themed-form-field';
+import { isSameCalendarDay, TimeSelectField } from '@/presentation/components/time-select-field';
 import { Label } from '@/presentation/components/ui/label';
+import {
+  APP_SHELL_FORM_PICKER_CLASS,
+  APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
+  APP_SHELL_FORM_DROPDOWN_CONTENT_CLASS,
+  APP_SHELL_FORM_SECTION_CLASS,
+  APP_SHELL_FORM_SELECT_CLASS,
+  APP_SHELL_FORM_UPLOAD_ZONE_CLASS,
+  APP_SHELL_SECONDARY_BUTTON_CLASS,
+} from '@/presentation/layout/app-shell-chrome';
 import {
   Popover,
   PopoverContent,
@@ -37,13 +48,16 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import { Switch } from '@/presentation/components/ui/switch';
-import { Textarea } from '@/presentation/components/ui/textarea';
 import { uploadEventCover } from '@/infrastructure/storage/image-upload';
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
 
 import { eventsApi } from '@/infrastructure/events/events-api';
 
 import { AREA_OPTIONS, DIFFICULTY_LEVELS, extractEventCategories } from '../event-data';
+import {
+  isEndDateBeforeStart,
+  validateEventSchedule,
+} from '../lib/validate-event-schedule';
 import { MapPicker } from './map-picker';
 
 function toTitleCase(str) {
@@ -195,6 +209,7 @@ export function EventForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
 
   function handleImageChange(e) {
     const file = e.target.files?.[0];
@@ -237,9 +252,36 @@ export function EventForm({
     setLongitude(lng);
   }, []);
 
+  useEffect(() => {
+    if (!eventDate || !endDate) {
+      setScheduleError('');
+      return;
+    }
+    setScheduleError(
+      validateEventSchedule({ eventDate, eventTime, endDate, endTime }) ?? '',
+    );
+  }, [eventDate, eventTime, endDate, endTime]);
+
+  const sameDaySchedule =
+    eventDate && endDate && isSameCalendarDay(eventDate, endDate);
+
+  useEffect(() => {
+    if (eventDate && endDate && isEndDateBeforeStart(eventDate, endDate)) {
+      setEndDate(undefined);
+    }
+  }, [eventDate, endDate]);
+
+  useEffect(() => {
+    if (!sameDaySchedule || !eventTime.trim() || !endTime.trim()) return;
+    if (endTime <= eventTime.trim()) {
+      setEndTime('');
+    }
+  }, [sameDaySchedule, eventTime, endTime]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError('');
+    setScheduleError('');
 
     if (!title.trim()) {
       setFormError('Judul event wajib diisi.');
@@ -269,6 +311,19 @@ export function EventForm({
       setFormError('Waktu selesai wajib diisi.');
       return;
     }
+
+    const scheduleValidation = validateEventSchedule({
+      eventDate,
+      eventTime,
+      endDate,
+      endTime,
+    });
+    if (scheduleValidation) {
+      setScheduleError(scheduleValidation);
+      setFormError(scheduleValidation);
+      return;
+    }
+
     if (!locationArea) {
       setFormError('Pilih area lokasi.');
       return;
@@ -363,8 +418,8 @@ export function EventForm({
                 </button>
               </div>
             ) : (
-              <label className='flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-muted/20 py-10 transition-colors hover:border-primary-container/50 hover:bg-primary-container/5'>
-                <div className='rounded-xl bg-muted/60 p-3'>
+              <label className={cn('cursor-pointer py-10', APP_SHELL_FORM_UPLOAD_ZONE_CLASS)}>
+                <div className='rounded-xl bg-muted/50 p-3'>
                   <Upload className='size-6 text-muted-foreground' />
                 </div>
                 <div className='text-center'>
@@ -377,9 +432,9 @@ export function EventForm({
                 </div>
                 <Button
                   type='button'
-                  variant='outline'
+                  variant='ghost'
                   size='sm'
-                  className='rounded-full px-6 mt-1'
+                  className={cn('mt-1 rounded-full px-6', APP_SHELL_SECONDARY_BUTTON_CLASS)}
                   onClick={(e) => {
                     e.preventDefault();
                     fileInputRef.current?.click();
@@ -402,14 +457,13 @@ export function EventForm({
           <div className='space-y-2'>
             <Label htmlFor='event-title' className='flex items-center gap-2 text-sm font-bold text-foreground'>
               <Type className='size-4 text-primary-container' aria-hidden />
-              Judul Event <span className='text-destructive'>*</span>
+              Judul Event <RequiredMark />
             </Label>
-            <Input
+            <ThemedInput
               id='event-title'
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder='Contoh: Morning Run Sudirman'
-              className='h-12 rounded-xl border-border bg-muted/40'
             />
           </div>
 
@@ -417,10 +471,10 @@ export function EventForm({
           <div className='space-y-2 relative' ref={categoryContainerRef}>
             <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
               <Tag className='size-4 text-primary-container' aria-hidden />
-              Kategori Event <span className='text-destructive'>*</span>
+              Kategori Event <RequiredMark />
             </Label>
             <div className='relative'>
-              <Input
+              <ThemedInput
                 value={category}
                 onChange={(e) => {
                   setCategory(e.target.value);
@@ -428,12 +482,11 @@ export function EventForm({
                 }}
                 onFocus={() => setCategoryDropdownOpen(true)}
                 placeholder='Ketik atau pilih kategori...'
-                className='h-12 w-full rounded-xl border-border bg-muted/40 px-4'
-                autoComplete="off"
+                autoComplete='off'
               />
 
               {categoryDropdownOpen && (
-                <div className='absolute left-0 top-full z-[1010] mt-2 w-full max-h-[16rem] overflow-y-auto rounded-xl border border-border bg-card shadow-lg flex flex-col'>
+                <div className='absolute left-0 top-full z-[1010] mt-2 flex max-h-[16rem] w-full flex-col overflow-y-auto rounded-xl border border-border/60 bg-white shadow-lg'>
                   {isSearchingCategories && <div className='p-3 text-center text-sm text-muted-foreground'>Pencarian...</div>}
 
                   {!isSearchingCategories && categories.map((c, i) => {
@@ -447,7 +500,7 @@ export function EventForm({
                           setCategory(label);
                           setCategoryDropdownOpen(false);
                         }}
-                        className='px-4 py-2.5 text-left text-sm hover:bg-muted/50 focus:bg-muted/50 border-b border-border/40 last:border-0'
+                        className='border-b border-border/40 bg-white px-4 py-2.5 text-left text-sm last:border-0 hover:bg-muted/50 focus:bg-muted/50'
                       >
                         {toTitleCase(label)}
                       </button>
@@ -461,7 +514,7 @@ export function EventForm({
                       <button
                         type='button'
                         onClick={handleCreateCategory}
-                        className='px-4 py-2.5 text-left text-sm text-primary-container font-medium hover:bg-muted/50 focus:bg-muted/50 border-b border-border/40 last:border-0'
+                        className='border-b border-border/40 bg-white px-4 py-2.5 text-left text-sm font-medium text-primary-container last:border-0 hover:bg-muted/50 focus:bg-muted/50'
                       >
                         Buat kategori baru: "{toTitleCase(category.trim())}"
                       </button>
@@ -479,15 +532,14 @@ export function EventForm({
           <div className='space-y-2'>
             <Label htmlFor='event-desc' className='flex items-center gap-2 text-sm font-bold text-foreground'>
               <FileText className='size-4 text-primary-container' aria-hidden />
-              Deskripsi Event <span className='text-destructive'>*</span>
+              Deskripsi Event <RequiredMark />
             </Label>
-            <Textarea
+            <ThemedTextarea
               id='event-desc'
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder='Ceritain tentang event-mu...'
               rows={4}
-              className='rounded-xl border-border bg-muted/40'
             />
           </div>
 
@@ -496,27 +548,30 @@ export function EventForm({
             <div className='space-y-2'>
               <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
                 <CalendarIcon className='size-4 text-primary-container' aria-hidden />
-                Tanggal <span className='text-destructive'>*</span>
+                Tanggal <RequiredMark />
               </Label>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type='button'
                     className={cn(
-                      'relative flex h-12 w-full items-center rounded-xl border border-border bg-muted/40 px-4 text-left text-sm outline-none transition-colors',
-                      'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                      !eventDate && 'text-muted-foreground',
+                      APP_SHELL_FORM_PICKER_CLASS,
+                      !eventDate && APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
                     )}
                   >
                     {eventDate ? format(eventDate, 'dd/MM/yyyy') : 'Pilih tanggal'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
+                <PopoverContent className='w-auto border border-border/60 bg-white p-0 shadow-lg' align='start'>
                   <Calendar
+                    className='bg-white'
                     mode='single'
                     selected={eventDate}
                     onSelect={(d) => {
                       setEventDate(d);
+                      if (d && endDate && isBefore(startOfDay(endDate), startOfDay(d))) {
+                        setEndDate(undefined);
+                      }
                       setCalendarOpen(false);
                     }}
                     initialFocus
@@ -528,9 +583,9 @@ export function EventForm({
             <div className='space-y-2'>
               <Label htmlFor='event-time' className='flex items-center gap-2 text-sm font-bold text-foreground'>
                 <Clock className='size-4 text-primary-container' aria-hidden />
-                Waktu <span className='text-destructive'>*</span>
+                Waktu <RequiredMark />
               </Label>
-              <Input
+              <ThemedInput
                 ref={timeInputRef}
                 id='event-time'
                 type='time'
@@ -538,7 +593,7 @@ export function EventForm({
                 onChange={(e) => setEventTime(e.target.value)}
                 onClick={() => timeInputRef.current?.showPicker?.()}
                 onFocus={() => timeInputRef.current?.showPicker?.()}
-                className='h-12 rounded-xl border-border bg-muted/40 cursor-text'
+                className='cursor-text'
               />
             </div>
           </div>
@@ -548,26 +603,30 @@ export function EventForm({
             <div className='space-y-2'>
               <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
                 <CalendarIcon className='size-4 text-primary-container' aria-hidden />
-                Tanggal Selesai <span className='text-destructive'>*</span>
+                Tanggal Selesai <RequiredMark />
               </Label>
               <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type='button'
                     className={cn(
-                      'relative flex h-12 w-full items-center rounded-xl border border-border bg-muted/40 px-4 text-left text-sm outline-none transition-colors',
-                      'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                      !endDate && 'text-muted-foreground',
+                      APP_SHELL_FORM_PICKER_CLASS,
+                      !endDate && APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
                     )}
                   >
                     {endDate ? format(endDate, 'dd/MM/yyyy') : 'Pilih tanggal selesai'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
+                <PopoverContent className='w-auto border border-border/60 bg-white p-0 shadow-lg' align='start'>
                   <Calendar
+                    className='bg-white'
                     mode='single'
                     selected={endDate}
+                    disabled={(date) =>
+                      eventDate ? isBefore(startOfDay(date), startOfDay(eventDate)) : false
+                    }
                     onSelect={(d) => {
+                      if (d && eventDate && isEndDateBeforeStart(eventDate, d)) return;
                       setEndDate(d);
                       setEndCalendarOpen(false);
                     }}
@@ -580,20 +639,41 @@ export function EventForm({
             <div className='space-y-2'>
               <Label htmlFor='event-end-time' className='flex items-center gap-2 text-sm font-bold text-foreground'>
                 <Clock className='size-4 text-primary-container' aria-hidden />
-                Waktu Selesai <span className='text-destructive'>*</span>
+                Waktu Selesai <RequiredMark />
               </Label>
-              <Input
-                id='event-end-time'
-                type='time'
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className='h-12 rounded-xl border-border bg-muted/40 cursor-text'
-              />
+              {sameDaySchedule ? (
+                <TimeSelectField
+                  id='event-end-time'
+                  value={endTime}
+                  onValueChange={setEndTime}
+                  minExclusive={eventTime.trim() || undefined}
+                  placeholder={
+                    eventTime.trim()
+                      ? 'Pilih jam setelah jam mulai'
+                      : 'Isi jam mulai dulu'
+                  }
+                  invalid={Boolean(scheduleError)}
+                />
+              ) : (
+                <ThemedInput
+                  id='event-end-time'
+                  type='time'
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className={cn('cursor-text', scheduleError && 'border-destructive/60')}
+                />
+              )}
             </div>
           </div>
 
+          {scheduleError ? (
+            <p className='text-sm font-medium text-destructive' role='alert'>
+              {scheduleError}
+            </p>
+          ) : null}
+
           {/* Registration Deadline */}
-          <div className='space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4 md:p-5'>
+          <div className={APP_SHELL_FORM_SECTION_CLASS}>
             <div className='flex items-center justify-between gap-4'>
               <div>
                 <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
@@ -624,9 +704,8 @@ export function EventForm({
                       <button
                         type='button'
                         className={cn(
-                          'relative flex h-12 w-full items-center rounded-xl border border-border bg-background px-4 text-left text-sm outline-none transition-colors',
-                          'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                          !registrationDeadlineDate && 'text-muted-foreground',
+                          APP_SHELL_FORM_PICKER_CLASS,
+                          !registrationDeadlineDate && APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
                         )}
                       >
                         {registrationDeadlineDate
@@ -634,8 +713,9 @@ export function EventForm({
                           : 'Ikuti tanggal mulai event'}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0' align='start'>
+                    <PopoverContent className='w-auto border border-border/60 bg-white p-0 shadow-lg' align='start'>
                       <Calendar
+                        className='bg-white'
                         mode='single'
                         selected={registrationDeadlineDate}
                         onSelect={(d) => {
@@ -652,7 +732,7 @@ export function EventForm({
                   <Label htmlFor='registration-deadline-time' className='text-sm font-semibold text-foreground'>
                     Waktu Batas Registrasi (Opsional)
                   </Label>
-                  <Input
+                  <ThemedInput
                     ref={registrationDeadlineTimeInputRef}
                     id='registration-deadline-time'
                     type='time'
@@ -660,7 +740,7 @@ export function EventForm({
                     onChange={(e) => setRegistrationDeadlineTime(e.target.value)}
                     onClick={() => registrationDeadlineTimeInputRef.current?.showPicker?.()}
                     onFocus={() => registrationDeadlineTimeInputRef.current?.showPicker?.()}
-                    className='h-12 rounded-xl border-border bg-background cursor-text'
+                    className='cursor-text'
                   />
                 </div>
               </div>
@@ -671,13 +751,16 @@ export function EventForm({
           <div className='space-y-2'>
             <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
               <MapPin className='size-4 text-primary-container' aria-hidden />
-              Area Lokasi <span className='text-destructive'>*</span>
+              Area Lokasi <RequiredMark />
             </Label>
             <Select value={locationArea} onValueChange={setLocationArea}>
-              <SelectTrigger className='h-12 w-full rounded-xl border-border bg-muted/40 px-4 text-left'>
+              <SelectTrigger className={APP_SHELL_FORM_SELECT_CLASS}>
                 <SelectValue placeholder='Pilih area' />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                className={APP_SHELL_FORM_DROPDOWN_CONTENT_CLASS}
+                position='popper'
+              >
                 {AREA_OPTIONS.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.label}
@@ -689,14 +772,13 @@ export function EventForm({
 
           <div className='space-y-2'>
             <Label htmlFor='event-address' className='text-sm font-bold text-foreground'>
-              Alamat Lengkap <span className='text-destructive'>*</span>
+              Alamat Lengkap <RequiredMark />
             </Label>
-            <Input
+            <ThemedInput
               id='event-address'
               value={locationAddress}
               onChange={(e) => setLocationAddress(e.target.value)}
               placeholder='Contoh: Gelora Bung Karno, Gate 1'
-              className='h-12 rounded-xl border-border bg-muted/40'
             />
           </div>
 
@@ -717,16 +799,15 @@ export function EventForm({
           <div className='space-y-2'>
             <Label htmlFor='event-max-p' className='flex items-center gap-2 text-sm font-bold text-foreground'>
               <Users className='size-4 text-primary-container' aria-hidden />
-              Maksimal Peserta <span className='text-destructive'>*</span>
+              Maksimal Peserta <RequiredMark />
             </Label>
-            <Input
+            <ThemedInput
               id='event-max-p'
               type='number'
               min='1'
               value={maxParticipants}
               onChange={(e) => setMaxParticipants(e.target.value)}
               placeholder='Contoh: 20'
-              className='h-12 rounded-xl border-border bg-muted/40'
             />
           </div>
 
@@ -753,10 +834,13 @@ export function EventForm({
                 Level Kesulitan
               </Label>
               <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
-                <SelectTrigger className='h-12 w-full rounded-xl border-border bg-muted/40 px-4 text-left'>
+                <SelectTrigger className={APP_SHELL_FORM_SELECT_CLASS}>
                   <SelectValue placeholder='Pilih level' />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  className={APP_SHELL_FORM_DROPDOWN_CONTENT_CLASS}
+                  position='popper'
+                >
                   {DIFFICULTY_LEVELS.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.label}
@@ -773,7 +857,7 @@ export function EventForm({
               Tags (Opsional)
             </Label>
             <div className='flex gap-2'>
-              <Input
+              <ThemedInput
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -783,7 +867,7 @@ export function EventForm({
                   }
                 }}
                 placeholder='Tambah tag...'
-                className='h-11 rounded-xl border-border bg-muted/30'
+                className='h-11'
               />
               <Button
                 type='button'
@@ -826,10 +910,10 @@ export function EventForm({
       <div className='flex flex-col gap-3 sm:flex-row'>
         <Button
           type='button'
-          variant='outline'
+          variant='ghost'
           onClick={onCancel}
           disabled={isSubmitting}
-          className='h-12 flex-1 rounded-full border-border px-6'
+          className={cn('h-12 flex-1', APP_SHELL_SECONDARY_BUTTON_CLASS)}
         >
           <ArrowLeft className='size-4' />
           Batal

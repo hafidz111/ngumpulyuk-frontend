@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -28,7 +28,9 @@ import { Badge } from '@/presentation/components/ui/badge';
 import { Card } from '@/presentation/components/ui/card';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { AvatarGroup, AvatarGroupCount } from '@/presentation/components/ui/avatar-group';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { formatTimeId, formatLocation, formatEventDateRange } from '@/shared/lib/formatters';
 
 const DIFFICULTY_LABEL = {
@@ -101,9 +103,10 @@ function colorClassForIdentity(identity) {
 }
 
 export default function EventDetailPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { onOpenMenu } = useChatPageShell();
 
   const [event, setEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -160,10 +163,6 @@ export default function EventDetailPage() {
     load();
     return () => { cancelled = true; };
   }, [loadEvent, loadParticipants]);
-
-  if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />;
-  }
 
   async function handleJoin() {
     setActionLoading('join');
@@ -231,63 +230,62 @@ export default function EventDetailPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className='min-h-svh bg-surface text-foreground'>
-        <HomeAppHeader />
-        <div className='flex items-center justify-center py-32'>
-          <Loader2 className='size-8 animate-spin text-primary-container' />
-        </div>
-      </div>
-    );
-  }
+  const headerTitle = loading
+    ? 'Memuat...'
+    : (event?.title || 'Event');
+  const headerSubtitle = loading
+    ? 'Memuat detail event'
+    : (error || !event ? (error || 'Event tidak ditemukan') : formatLocation(event.location_address, event.location_area));
 
-  if (error || !event) {
-    return (
-      <div className='min-h-svh bg-surface text-foreground'>
-        <HomeAppHeader />
-        <div className='flex flex-col items-center justify-center gap-4 py-32 text-center'>
-          <Zap className='size-12 text-muted-foreground/30' />
-          <h2 className='font-display text-xl font-bold'>{error || 'Event tidak ditemukan'}</h2>
-          <Button asChild variant='outline' className='rounded-full'>
-            <Link to={ROUTES.events}>
-              <ArrowLeft className='size-4' />
-              Kembali
-            </Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const diffClass = event ? (DIFFICULTY_COLORS[event.difficulty_level] || DIFFICULTY_COLORS.beginner) : '';
 
-  const diffClass = DIFFICULTY_COLORS[event.difficulty_level] || DIFFICULTY_COLORS.beginner;
-
-  const dateDisplay = formatEventDateRange(event.event_date, event.end_date);
-  const formattedTime = formatTimeId(event.event_time);
+  const dateDisplay = event ? formatEventDateRange(event.event_date, event.end_date) : '';
+  const formattedTime = event ? formatTimeId(event.event_time) : '';
 
   let timeDisplay = formattedTime;
-  if (event.end_time && event.end_time !== event.event_time) {
+  if (event?.end_time && event.end_time !== event.event_time) {
     timeDisplay += ` - ${formatTimeId(event.end_time)}`;
   }
 
-  const locationDisplay = formatLocation(event.location_address, event.location_area);
+  const locationDisplay = event ? formatLocation(event.location_address, event.location_area) : '';
   const normalizedParticipantCount = participantCount || participantsTotal || participants.length;
   const participantPreview = participants.slice(0, 7);
   const remainingParticipants = Math.max(0, normalizedParticipantCount - participantPreview.length);
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={headerTitle}
+        subtitle={headerSubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody>
+        <div className='mx-auto max-w-4xl space-y-6'>
+          <Button asChild variant='ghost' size='sm' className='-ml-2 rounded-full'>
+            <Link to={ROUTES.events}>
+              <ArrowLeft className='size-4' />
+              Kembali ke Events
+            </Link>
+          </Button>
 
-      <main className='mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-10'>
-        {/* Back button */}
-        <Button asChild variant='ghost' size='sm' className='mb-4 -ml-2 rounded-full'>
-          <Link to={ROUTES.events}>
-            <ArrowLeft className='size-4' />
-            Kembali ke Events
-          </Link>
-        </Button>
-
+          {loading ? (
+            <div className='flex items-center justify-center py-32'>
+              <Loader2 className='size-8 animate-spin text-primary-container' />
+            </div>
+          ) : error || !event ? (
+            <div className='flex flex-col items-center justify-center gap-4 py-32 text-center'>
+              <Zap className='size-12 text-muted-foreground/30' />
+              <h2 className='font-display text-xl font-bold'>{error || 'Event tidak ditemukan'}</h2>
+              <Button asChild variant='outline' className='rounded-full'>
+                <Link to={ROUTES.events}>
+                  <ArrowLeft className='size-4' />
+                  Kembali
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <>
         {/* Cover Image */}
         <div className='relative mb-6 h-56 overflow-hidden rounded-3xl bg-gradient-to-br from-primary-container/20 to-secondary/20 shadow-sm md:h-72'>
           {event.cover_image ? (
@@ -497,7 +495,10 @@ export default function EventDetailPage() {
             </Card>
           </div>
         </div>
-      </main>
+            </>
+          )}
+        </div>
+      </ChatFirstPageBody>
     </div>
   );
 }

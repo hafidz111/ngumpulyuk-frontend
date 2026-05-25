@@ -2,10 +2,15 @@ import { useState, useRef } from 'react';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { cn } from '@/lib/utils';
+import { RequiredMark } from '@/presentation/components/required-mark';
 import { Button } from '@/presentation/components/ui/button';
-import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
-import { Textarea } from '@/presentation/components/ui/textarea';
+import { ThemedInput, ThemedTextarea } from '@/presentation/components/themed-form-field';
+import {
+  APP_SHELL_FORM_UPLOAD_ZONE_CLASS,
+  APP_SHELL_SECONDARY_BUTTON_CLASS,
+} from '@/presentation/layout/app-shell-chrome';
 import { uploadEventCover } from '@/infrastructure/storage/image-upload';
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
@@ -100,10 +105,10 @@ export function CommunityForm({ onSubmit, onCancel, submitLabel = 'Buat Communit
           <button
             type='button'
             onClick={() => coverRef.current?.click()}
-            className='flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/50'
+            className={cn(APP_SHELL_FORM_UPLOAD_ZONE_CLASS, 'aspect-[16/9]')}
           >
-            <ImagePlus className='size-8' />
-            <span className='text-sm'>Upload cover image</span>
+            <ImagePlus className='size-8 text-muted-foreground' />
+            <span className='text-sm font-medium text-foreground'>Upload cover image</span>
           </button>
         )}
       </div>
@@ -111,14 +116,13 @@ export function CommunityForm({ onSubmit, onCancel, submitLabel = 'Buat Communit
       {/* Name */}
       <div className='space-y-2'>
         <Label htmlFor='community-name' className='text-sm font-bold text-foreground'>
-          Nama Komunitas <span className='text-destructive'>*</span>
+          Nama Komunitas <RequiredMark />
         </Label>
-        <Input
+        <ThemedInput
           id='community-name'
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder='Nama komunitas'
-          className='h-12 rounded-xl border-border bg-muted/40'
           maxLength={100}
         />
       </div>
@@ -126,14 +130,13 @@ export function CommunityForm({ onSubmit, onCancel, submitLabel = 'Buat Communit
       {/* Description */}
       <div className='space-y-2'>
         <Label htmlFor='community-desc' className='text-sm font-bold text-foreground'>
-          Deskripsi <span className='text-destructive'>*</span>
+          Deskripsi <RequiredMark />
         </Label>
-        <Textarea
+        <ThemedTextarea
           id='community-desc'
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder='Ceritakan tentang komunitas ini...'
-          className='min-h-[100px] rounded-xl border-border bg-muted/40'
           maxLength={500}
         />
       </div>
@@ -141,14 +144,13 @@ export function CommunityForm({ onSubmit, onCancel, submitLabel = 'Buat Communit
       {/* Category */}
       <div className='space-y-2'>
         <Label htmlFor='community-category' className='text-sm font-bold text-foreground'>
-          Kategori <span className='text-destructive'>*</span>
+          Kategori <RequiredMark />
         </Label>
-        <Input
+        <ThemedInput
           id='community-category'
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder='Contoh: Olahraga, Gaming, Seni'
-          className='h-12 rounded-xl border-border bg-muted/40'
           maxLength={50}
         />
       </div>
@@ -156,14 +158,19 @@ export function CommunityForm({ onSubmit, onCancel, submitLabel = 'Buat Communit
       {/* Actions */}
       <div className='flex items-center gap-3 pt-2'>
         {onCancel ? (
-          <Button type='button' variant='outline' onClick={onCancel} className='flex-1 h-12 rounded-xl'>
+          <Button
+            type='button'
+            variant='ghost'
+            onClick={onCancel}
+            className={cn('h-12 flex-1', APP_SHELL_SECONDARY_BUTTON_CLASS)}
+          >
             Batal
           </Button>
         ) : null}
         <Button
           type='submit'
           disabled={submitting}
-          className='flex-1 h-12 rounded-xl bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+          className='h-12 flex-1 rounded-xl bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
         >
           {submitting ? <Loader2 className='size-4 animate-spin' /> : null}
           {submitLabel}

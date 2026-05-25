@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
-import { useAuth } from '@/presentation/auth/hooks/use-auth';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
 import { ThreadCard } from '../components/thread-card';
@@ -19,7 +21,7 @@ function extractPayload(payload) {
 export default function ThreadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
 
   const [thread, setThread] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -156,43 +158,48 @@ export default function ThreadDetailPage() {
     }
   }
 
-  if (!isAuthenticated) return <Navigate to={ROUTES.login} replace />;
-
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-      <main className='mx-auto max-w-3xl space-y-6 px-4 py-8 md:px-6 md:py-10'>
-        <Button asChild variant='ghost' size='sm' className='-ml-2 rounded-full'>
-          <Link to={ROUTES.community}>
-            <ArrowLeft className='size-4' />
-            Kembali ke Community
-          </Link>
-        </Button>
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={SHELL_COPY.pages.threadTitle}
+        subtitle={SHELL_COPY.pages.threadSubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+      />
+      <ChatFirstPageBody>
+        <div className='mx-auto max-w-3xl space-y-6'>
+          <Button asChild variant='ghost' size='sm' className='-ml-2 rounded-full'>
+            <Link to={ROUTES.community}>
+              <ArrowLeft className='size-4' />
+              Kembali ke Community
+            </Link>
+          </Button>
 
-        {loading ? (
-          <div className='flex items-center justify-center py-20'>
-            <Loader2 className='size-7 animate-spin text-primary-container' />
-          </div>
-        ) : !thread ? (
-          <Card className='border border-border/80 bg-card p-10 text-center'>
-            <MessageCircle className='mx-auto size-8 text-muted-foreground/30' />
-            <p className='mt-2 text-sm text-muted-foreground'>Thread tidak ditemukan.</p>
-          </Card>
-        ) : (
-          <ThreadCard
-            thread={thread}
-            communityName={thread.community?.name || thread.community_name}
-            communityId={thread.community?.id || thread.community_id}
-            isLiked={Boolean(thread.is_liked)}
-            isLiking={togglingLike}
-            onLike={handleLikeThread}
-            onOpenComments={handleOpenComments}
-            onDelete={handleDeleteThread}
-            canDelete={Boolean(thread.can_delete)}
-            isDeleting={deletingThread}
-          />
-        )}
-      </main>
+          {loading ? (
+            <div className='flex items-center justify-center py-20'>
+              <Loader2 className='size-7 animate-spin text-primary-container' />
+            </div>
+          ) : !thread ? (
+            <Card className='border border-border/80 bg-card p-10 text-center'>
+              <MessageCircle className='mx-auto size-8 text-muted-foreground/30' />
+              <p className='mt-2 text-sm text-muted-foreground'>Thread tidak ditemukan.</p>
+            </Card>
+          ) : (
+            <ThreadCard
+              thread={thread}
+              communityName={thread.community?.name || thread.community_name}
+              communityId={thread.community?.id || thread.community_id}
+              isLiked={Boolean(thread.is_liked)}
+              isLiking={togglingLike}
+              onLike={handleLikeThread}
+              onOpenComments={handleOpenComments}
+              onDelete={handleDeleteThread}
+              canDelete={Boolean(thread.can_delete)}
+              isDeleting={deletingThread}
+            />
+          )}
+        </div>
+      </ChatFirstPageBody>
       <ThreadCommentsDialog
         open={commentsOpen}
         onOpenChange={setCommentsOpen}

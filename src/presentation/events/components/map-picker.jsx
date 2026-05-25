@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { MapPin, Navigation, Search } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/presentation/components/ui/button';
-import { Input } from '@/presentation/components/ui/input';
+import { ThemedSearchField } from '@/presentation/components/themed-search-field';
+import { APP_SHELL_SECONDARY_BUTTON_CLASS } from '@/presentation/layout/app-shell-chrome';
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from '../event-data';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -116,8 +117,7 @@ export function MapPicker({ latitude, longitude, onChange, className }) {
       <div className='flex gap-2'>
         <div className='flex flex-1 gap-2 relative'>
           <div className='relative flex-1'>
-            <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-            <Input
+            <ThemedSearchField
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -127,12 +127,12 @@ export function MapPicker({ latitude, longitude, onChange, className }) {
                 }
               }}
               placeholder='Cari lokasi...'
-              className='h-10 rounded-xl bg-muted/40 pl-9'
+              inputClassName='h-10 rounded-xl pl-10'
             />
 
             {/* Search results dropdown */}
             {searchResults.length > 0 && (
-              <div className='absolute left-0 top-full z-[1000] mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-border bg-card shadow-lg'>
+              <div className='absolute left-0 top-full z-[1000] mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-border/60 bg-white shadow-lg'>
                 {searchResults.map((result) => {
                   const parts = result.display_name.split(', ');
                   const title = result.name || parts[0];
@@ -140,7 +140,7 @@ export function MapPicker({ latitude, longitude, onChange, className }) {
                     <button
                       key={result.place_id}
                       type='button'
-                      className='flex w-full flex-col gap-0.5 border-b border-border/40 px-4 py-2.5 text-left hover:bg-muted/50 focus:bg-muted/50 focus:outline-none last:border-0'
+                      className='flex w-full flex-col gap-0.5 border-b border-border/40 px-4 py-2.5 text-left last:border-0 hover:bg-muted/50 focus:bg-muted/50 focus:outline-none'
                       onClick={() => {
                         handleLocationSelect([parseFloat(result.lat), parseFloat(result.lon)]);
                         setSearchQuery(title);
@@ -161,22 +161,21 @@ export function MapPicker({ latitude, longitude, onChange, className }) {
           </div>
           <Button
             type='button'
-            variant='secondary'
             size='sm'
             onClick={handleSearch}
             disabled={isSearching}
-            className='h-10 shrink-0 rounded-xl px-4'
+            className='h-10 shrink-0 rounded-xl bg-[#FF8000] px-4 font-semibold text-white hover:bg-[#E67300]'
           >
             {isSearching ? 'Mencari…' : 'Cari'}
           </Button>
         </div>
         <Button
           type='button'
-          variant='outline'
+          variant='ghost'
           size='icon'
           disabled={isLocating}
           onClick={handleLocateMe}
-          className='size-10 shrink-0 rounded-xl'
+          className={cn('size-10 shrink-0', APP_SHELL_SECONDARY_BUTTON_CLASS)}
           title='Lokasi saya'
         >
           <Navigation className={cn('size-4', isLocating && 'animate-pulse')} />

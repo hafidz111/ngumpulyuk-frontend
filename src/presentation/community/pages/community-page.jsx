@@ -1,23 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Loader2,
   MessageCircle,
   Plus,
-  Search,
   Users,
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ROUTES } from '@/shared/config/routes';
+import { SHELL_COPY } from '@/shared/copy/shell-copy';
+import { mapParticipationSummary } from '@/application/users/map-participation-summary';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
 import { usersApi } from '@/infrastructure/users/users-api';
-import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
-import { Input } from '@/presentation/components/ui/input';
+import { ThemedSearchField } from '@/presentation/components/themed-search-field';
 import { Tabs } from '@/presentation/components/ui/tabs';
-import { HomeAppHeader } from '@/presentation/home/components/home-app-header';
+import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
+import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
+import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { CommunityCard } from '../components/community-card';
 import { ThreadCard } from '../components/thread-card';
 import { ThreadComposer } from '../components/thread-composer';
@@ -27,8 +29,8 @@ const LIMIT = 12;
 const FEED_LIMIT = 10;
 
 const TAB_ITEMS = [
-  { id: 'threads', label: 'Threads', icon: MessageCircle },
-  { id: 'communities', label: 'Communities', icon: Users },
+  { id: 'threads', label: SHELL_COPY.pages.communityTabFeed, icon: MessageCircle },
+  { id: 'communities', label: SHELL_COPY.pages.communityTabCircles, icon: Users },
 ];
 
 function extractCollection(payload) {
@@ -54,32 +56,8 @@ function isJoinedCommunity(item = {}) {
   );
 }
 
-function mapParticipationSummary(payload) {
-  const data = payload?.data ?? payload;
-  const activeEventsRaw = Array.isArray(data?.active_events) ? data.active_events : [];
-  const joinedCommunitiesRaw = Array.isArray(data?.joined_communities)
-    ? data.joined_communities
-    : [];
-
-  const events = activeEventsRaw
-    .map((item) => ({
-      id: String(item?.id ?? ''),
-      title: String(item?.title ?? 'Event'),
-    }))
-    .filter((item) => item.id);
-
-  const communities = joinedCommunitiesRaw
-    .map((item) => ({
-      id: String(item?.id ?? ''),
-      name: String(item?.title ?? item?.name ?? 'Community'),
-    }))
-    .filter((item) => item.id);
-
-  return { events, communities };
-}
-
 export default function CommunityPage() {
-  const { isAuthenticated } = useAuth();
+  const { onOpenMenu } = useChatPageShell();
   const [tab, setTab] = useState('threads');
 
   const [feedThreads, setFeedThreads] = useState([]);
@@ -100,6 +78,7 @@ export default function CommunityPage() {
   const [communities, setCommunities] = useState([]);
   const [composerCommunities, setComposerCommunities] = useState([]);
   const [composerEvents, setComposerEvents] = useState([]);
+  const [myUpcomingEventsCount, setMyUpcomingEventsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
@@ -173,12 +152,14 @@ export default function CommunityPage() {
   const fetchComposerParticipation = useCallback(async () => {
     try {
       const res = await usersApi.participationSummary();
-      const { communities, events } = mapParticipationSummary(res.data);
+      const { communities, events, activeEventsCount } = mapParticipationSummary(res.data);
       setComposerCommunities(communities);
       setComposerEvents(events);
+      setMyUpcomingEventsCount(activeEventsCount);
     } catch {
       setComposerCommunities([]);
       setComposerEvents([]);
+      setMyUpcomingEventsCount(0);
     }
   }, []);
 
@@ -316,11 +297,11 @@ export default function CommunityPage() {
   }
 
   useEffect(() => {
+    fetchComposerParticipation();
     if (tab === 'communities') {
       fetchCommunities(0);
     } else if (tab === 'threads') {
       fetchFeed(0, false);
-      fetchComposerParticipation();
     }
   }, [tab, fetchCommunities, fetchFeed, fetchComposerParticipation]);
 
@@ -352,173 +333,213 @@ export default function CommunityPage() {
   const hasMore = offset + LIMIT < totalCount;
   const hasPrev = offset > 0;
 
-  if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />;
-  }
+  const joinedCommunities = communities.filter(isJoinedCommunity);
+  const exploreCommunities = communities.filter((c) => !isJoinedCommunity(c));
 
   return (
-    <div className='min-h-svh bg-surface text-foreground'>
-      <HomeAppHeader />
-
-      <main className='mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10'>
-        {/* Header */}
-        <div className='mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
-          <div>
-            <h1 className='font-display text-2xl font-bold text-foreground md:text-3xl'>
-              Community
-            </h1>
-            <p className='mt-1 text-sm text-muted-foreground'>
-              Ngobrol, sharing, dan connect dengan komunitas
-            </p>
-          </div>
-          {tab === 'communities' ? (
+    <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
+      <ChatFirstPageHeader
+        title={SHELL_COPY.pages.communityTitle}
+        subtitle={SHELL_COPY.pages.communitySubtitle}
+        onOpenMenu={onOpenMenu}
+        showCreateEvent={false}
+        actions={
+          tab === 'communities' ? (
             <Button
               asChild
-              className='h-11 rounded-full bg-primary-container px-6 font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+              className='h-9 shrink-0 rounded-full bg-[#FF8000] px-3 text-sm font-semibold text-white hover:bg-[#FF8000]/90'
             >
               <Link to={ROUTES.communityCreate}>
                 <Plus className='size-4' />
-                Buat Community
+                <span className='hidden sm:inline'>{SHELL_COPY.pages.createCommunity}</span>
+                <span className='sm:hidden'>{SHELL_COPY.pages.createCommunityShort}</span>
               </Link>
             </Button>
-          ) : null}
+          ) : null
+        }
+      />
+      <ChatFirstPageBody className='md:py-8'>
+        <div className='mb-6 rounded-3xl border border-[#FF8000]/15 bg-gradient-to-br from-[#FFF1E5]/90 via-white to-white px-5 py-4 shadow-sm'>
+          <p className='text-sm font-medium leading-relaxed text-foreground/90'>
+            {SHELL_COPY.pages.communityHubHint}
+          </p>
         </div>
 
-        {/* Tabs */}
         <Tabs
           value={tab}
           onChange={setTab}
           items={TAB_ITEMS}
-          className='mb-6'
+          className='mb-8'
         />
 
-        {/* Tab: Threads */}
         {tab === 'threads' ? (
-          <div className='space-y-5'>
+          <div className='space-y-5 pb-4'>
+            <div className='flex items-end justify-between gap-3'>
+              <h2 className='font-display text-lg font-bold text-foreground'>
+                {SHELL_COPY.pages.communityFeedTitle}
+              </h2>
+            </div>
+            {myUpcomingEventsCount > 0 ? (
+              <p className='-mt-2 text-xs font-medium text-sky-700'>
+                {SHELL_COPY.pages.communityFeedEventHint(myUpcomingEventsCount)}
+              </p>
+            ) : null}
             <ThreadComposer
               communities={composerCommunities}
               events={composerEvents}
               onPost={handleFeedPost}
             />
             {feedLoading ? (
-              <div className='flex items-center justify-center py-12'>
-                <Loader2 className='size-6 animate-spin text-primary-container' />
+              <div className='flex items-center justify-center py-16'>
+                <Loader2 className='size-8 animate-spin text-[#FF8000]' />
               </div>
             ) : feedThreads.length === 0 ? (
-              <div className='rounded-2xl border border-border/80 bg-card p-10 text-center'>
-                <MessageCircle className='mx-auto mb-3 size-10 text-muted-foreground/30' />
-                <p className='text-muted-foreground'>Belum ada thread di feed kamu.</p>
+              <div className='rounded-3xl border border-dashed border-border/70 bg-white px-6 py-14 text-center'>
+                <MessageCircle className='mx-auto mb-3 size-10 text-[#FF8000]/35' />
+                <p className='text-sm text-muted-foreground'>
+                  {SHELL_COPY.pages.communityFeedEmpty}
+                </p>
               </div>
             ) : (
-              feedThreads.map((thread) => (
-                <ThreadCard
-                  key={thread.id}
-                  thread={thread}
-                  communityName={thread.community?.name || thread.community_name}
-                  communityId={thread.community?.id || thread.community_id}
-                  isLiked={Boolean(thread.is_liked)}
-                  isLiking={togglingLikeId === thread.id}
-                  onLike={handleLikeThread}
-                  onOpenComments={handleOpenComments}
-                  onDelete={handleDeleteThread}
-                  canDelete={Boolean(thread.can_delete)}
-                  isDeleting={deletingThreadId === thread.id}
-                />
-              ))
+              <div className='space-y-4'>
+                {feedThreads.map((thread) => (
+                  <ThreadCard
+                    key={thread.id}
+                    thread={thread}
+                    communityName={thread.community?.name || thread.community_name}
+                    communityId={thread.community?.id || thread.community_id}
+                    isLiked={Boolean(thread.is_liked)}
+                    isLiking={togglingLikeId === thread.id}
+                    onLike={handleLikeThread}
+                    onOpenComments={handleOpenComments}
+                    onDelete={handleDeleteThread}
+                    canDelete={Boolean(thread.can_delete)}
+                    isDeleting={deletingThreadId === thread.id}
+                  />
+                ))}
+              </div>
             )}
             {!feedLoading && feedThreads.length > 0 && feedThreads.length < feedTotal ? (
-              <div ref={loadMoreRef} className='flex items-center justify-center py-2'>
-                {feedLoadingMore ? <Loader2 className='size-4 animate-spin text-primary-container' /> : null}
+              <div ref={loadMoreRef} className='flex items-center justify-center py-4'>
+                {feedLoadingMore ? (
+                  <Loader2 className='size-5 animate-spin text-[#FF8000]' />
+                ) : null}
               </div>
             ) : null}
           </div>
         ) : null}
 
-        {/* Tab: Communities */}
         {tab === 'communities' ? (
-          <>
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className='mb-6'>
-              <div className='relative'>
-                <Search className='absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder='Cari komunitas...'
-                  className='h-12 rounded-full bg-card pl-11 shadow-sm border-border/60'
-                />
+          <div className='space-y-8 pb-6'>
+            {myUpcomingEventsCount > 0 ? (
+              <div className='rounded-2xl border border-sky-200/80 bg-sky-50/80 px-4 py-3 text-sm font-semibold text-sky-800'>
+                {SHELL_COPY.pages.communityFeedEventHint(myUpcomingEventsCount)}
               </div>
+            ) : null}
+
+            <form onSubmit={handleSearch}>
+              <ThemedSearchField
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={SHELL_COPY.pages.communitySearchPlaceholder}
+              />
             </form>
 
-            {/* Grid */}
             {loading ? (
-              <div className='flex items-center justify-center py-24'>
-                <Loader2 className='size-8 animate-spin text-primary-container' />
+              <div className='flex items-center justify-center py-20'>
+                <Loader2 className='size-8 animate-spin text-[#FF8000]' />
               </div>
             ) : communities.length === 0 ? (
-              <div className='flex flex-col items-center justify-center gap-4 py-24 text-center'>
-                <div className='rounded-2xl bg-muted/50 p-5'>
-                  <Zap className='size-10 text-muted-foreground/40' />
+              <div className='flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/70 bg-white px-6 py-16 text-center'>
+                <div className='rounded-2xl bg-[#FFF1E5] p-5'>
+                  <Zap className='size-10 text-[#FF8000]/50' />
                 </div>
                 <div>
                   <h3 className='font-display text-lg font-bold text-foreground'>
-                    Belum ada komunitas
+                    {SHELL_COPY.pages.communityEmptyTitle}
                   </h3>
                   <p className='mt-1 text-sm text-muted-foreground'>
                     {search
-                      ? 'Coba cari dengan kata kunci lain.'
-                      : 'Yuk buat komunitas pertamamu!'}
+                      ? SHELL_COPY.pages.communityEmptySearch
+                      : SHELL_COPY.pages.communityEmptyNoSearch}
                   </p>
                 </div>
                 {!search ? (
                   <Button
                     asChild
-                    className='rounded-full bg-primary-container px-6 font-semibold text-primary-foreground'
+                    className='rounded-full bg-[#FF8000] px-6 font-semibold text-white hover:bg-[#FF8000]/90'
                   >
                     <Link to={ROUTES.communityCreate}>
                       <Plus className='size-4' />
-                      Buat Community
+                      {SHELL_COPY.pages.createCommunity}
                     </Link>
                   </Button>
                 ) : null}
               </div>
             ) : (
               <>
-                <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3'>
-                  {communities.map((c) => (
-                    <CommunityCard key={c.id} community={c} />
-                  ))}
-                </div>
+                {!search && joinedCommunities.length > 0 ? (
+                  <section className='space-y-4'>
+                    <h2 className='font-display text-base font-bold text-foreground md:text-lg'>
+                      {SHELL_COPY.pages.communityJoinedSection}
+                    </h2>
+                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                      {joinedCommunities.map((c) => (
+                        <CommunityCard key={c.id} community={c} />
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
 
-                {/* Pagination */}
-                {(hasPrev || hasMore) ? (
-                  <div className='mt-8 flex items-center justify-center gap-4'>
+                <section className='space-y-4'>
+                  <div className='flex items-center justify-between gap-2'>
+                    <h2 className='font-display text-base font-bold text-foreground md:text-lg'>
+                      {search ? 'Hasil pencarian' : SHELL_COPY.pages.communityExploreSection}
+                    </h2>
+                    <span className='text-xs font-medium text-muted-foreground'>
+                      {totalCount} circle
+                    </span>
+                  </div>
+                  <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                    {(search ? communities : exploreCommunities).map((c) => (
+                      <CommunityCard key={c.id} community={c} />
+                    ))}
+                  </div>
+                  {!search && joinedCommunities.length > 0 && exploreCommunities.length === 0 ? (
+                    <p className='rounded-2xl bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground'>
+                      {SHELL_COPY.pages.communityAllJoinedHint}
+                    </p>
+                  ) : null}
+                </section>
+
+                {hasPrev || hasMore ? (
+                  <div className='flex flex-wrap items-center justify-center gap-3 pt-2'>
                     <Button
                       variant='outline'
                       disabled={!hasPrev}
                       onClick={() => fetchCommunities(Math.max(0, offset - LIMIT))}
-                      className='rounded-full px-6'
+                      className='rounded-full px-5'
                     >
                       Sebelumnya
                     </Button>
                     <span className='text-sm text-muted-foreground'>
-                      {offset + 1}&ndash;{Math.min(offset + LIMIT, totalCount)} dari {totalCount}
+                      {offset + 1} sampai {Math.min(offset + LIMIT, totalCount)} dari {totalCount}
                     </span>
                     <Button
                       variant='outline'
                       disabled={!hasMore}
                       onClick={() => fetchCommunities(offset + LIMIT)}
-                      className='rounded-full px-6'
+                      className='rounded-full px-5'
                     >
-                      Selanjutnya
+                      Lanjut
                     </Button>
                   </div>
                 ) : null}
               </>
             )}
-          </>
+          </div>
         ) : null}
-      </main>
+      </ChatFirstPageBody>
       <ThreadCommentsDialog
         open={commentsOpen}
         onOpenChange={setCommentsOpen}

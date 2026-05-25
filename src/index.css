@@ -24,6 +24,8 @@
   --border: 34 9% 66%;
   --input: 34 9% 66%;
   --ring: 27 100% 29%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
   --outline: 34 9% 66%;
   --outline-variant: 34 9% 66%;
   --surface: 36 86% 97%;

@@ -14,14 +14,14 @@ export function Dialog({ open, onClose, children }) {
   if (!open) return null;
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center'>
+    <div className='fixed inset-0 z-50 flex items-end justify-center sm:items-center'>
       {/* backdrop */}
       <div
         className='absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in-0'
         onClick={() => onClose(false)}
       />
       {/* content wrapper */}
-      <div className='relative z-10 w-full max-w-lg animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-200'>
+      <div className='relative z-10 w-full max-w-lg animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-200 sm:mx-0'>
         {children}
       </div>
     </div>
