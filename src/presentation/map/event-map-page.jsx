@@ -61,6 +61,8 @@ const STATUS_COLORS = {
   cancelled: '#dc2626',
 };
 
+const MAX_DISTANCE_KM = 70;
+
 function makeIcon(color, isSelected = false, title = '') {
   const outerSize = isSelected ? 96 : 60;
   const innerSize = isSelected ? 56 : 36;
@@ -244,22 +246,25 @@ export default function EventMapPage() {
         (e) => e.category && e.category.toLowerCase() === selected,
       );
     }
+
     const [refLat, refLng] = userPos || DEFAULT_MAP_CENTER;
-    list = [...list].sort((a, b) => {
-      const dA = haversineKm(
+    const withDistance = list.map((e) => ({
+      e,
+      distKm: haversineKm(
         refLat,
         refLng,
-        parseFloat(a.latitude),
-        parseFloat(a.longitude),
-      );
-      const dB = haversineKm(
-        refLat,
-        refLng,
-        parseFloat(b.latitude),
-        parseFloat(b.longitude),
-      );
-      return dA - dB;
-    });
+        parseFloat(e.latitude),
+        parseFloat(e.longitude),
+      ),
+    }));
+
+    const filteredByRadius = userPos
+      ? withDistance.filter((x) => x.distKm <= MAX_DISTANCE_KM)
+      : withDistance;
+
+    list = filteredByRadius
+      .sort((a, b) => a.distKm - b.distKm)
+      .map((x) => x.e);
 
     return list;
   }, [allEvents, search, category, userPos]);
