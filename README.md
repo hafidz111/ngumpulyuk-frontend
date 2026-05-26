@@ -2,6 +2,13 @@
 
 Aplikasi web **NgumpulYuk** untuk menemukan event, bergabung dengan circle (komunitas), berdiskusi, melihat peta event, dan chat dengan asisten **Ngumpsky**.
 
+## Deployment (production)
+
+|                 | URL                                                                    |
+| --------------- | ---------------------------------------------------------------------- |
+| **Aplikasi**    | [https://ngumpulyuk-id.vercel.app/](https://ngumpulyuk-id.vercel.app/) |
+| **Backend API** | `https://ngumpulyuk-backend.onrender.com/api/v1/`                      |
+
 ## Deskripsi
 
 Frontend dibangun sebagai SPA React dengan arsitektur berlapis (presentation → application → infrastructure), UI komponen shadcn/Radix + Tailwind, dan integrasi ke REST API backend Django.
@@ -10,19 +17,19 @@ Landing page publik menampilkan statistik & event/komunitas unggulan; setelah lo
 
 ## Fitur utama
 
-| Area | Fitur |
-|------|--------|
-| **Landing** | Hero, event trending, circle, CTA daftar, SEO |
-| **Auth** | Login, register, verifikasi email, lupa/reset password, Google Sign-In |
-| **Onboarding** | Minat, lokasi (514 kab/kota), waktu favorit |
-| **Explore** | Daftar event upcoming & past, filter kategori, pagination |
-| **Event** | Detail, buat/edit event, join/leave, upload cover, peta lokasi |
-| **Peta** | Semua marker event upcoming/ongoing, filter, lokasi user |
-| **Komunitas** | Feed thread global, circle, detail circle, thread & komentar |
-| **Chat** | Ngumpsky — rekomendasi & tanya jawab event/komunitas |
-| **Profil** | Edit profil, riwayat event, statistik |
-| **Notifikasi** | Daftar notifikasi, blast (staff) |
-| **Admin** | Monitoring chat & koreksi (staff) |
+| Area           | Fitur                                                                  |
+| -------------- | ---------------------------------------------------------------------- |
+| **Landing**    | Hero, event trending, circle, CTA daftar, SEO                          |
+| **Auth**       | Login, register, verifikasi email, lupa/reset password, Google Sign-In |
+| **Onboarding** | Minat, lokasi (514 kab/kota), waktu favorit                            |
+| **Explore**    | Daftar event upcoming & past, filter kategori, pagination              |
+| **Event**      | Detail, buat/edit event, join/leave, upload cover, peta lokasi         |
+| **Peta**       | Semua marker event upcoming/ongoing, filter, lokasi user               |
+| **Komunitas**  | Feed thread global, circle, detail circle, thread & komentar           |
+| **Chat**       | Ngumpsky — rekomendasi & tanya jawab event/komunitas                   |
+| **Profil**     | Edit profil, riwayat event, statistik                                  |
+| **Notifikasi** | Daftar notifikasi, blast (staff)                                       |
+| **Admin**      | Monitoring chat & koreksi (staff)                                      |
 
 ## Teknologi
 
@@ -81,14 +88,10 @@ Buat file **`.env`** di root frontend:
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
-
-# URL publik (production) — SEO, Open Graph, canonical
+VITE_SUPABASE_URL=supabase_url
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=supabase_key
 VITE_SITE_URL=http://localhost:5173
 ```
-
-File `.env` jangan di-commit. Contoh variabel di atas cukup untuk development lokal.
 
 ### 3. Development server
 
@@ -107,6 +110,8 @@ npm run preview
 
 Deploy folder `dist/` ke Vercel, Netlify, atau static hosting lain; set environment variables di dashboard hosting.
 
+Production saat ini: [https://ngumpulyuk-id.vercel.app/](https://ngumpulyuk-id.vercel.app/)
+
 ## Struktur folder (ringkas)
 
 ```
@@ -124,19 +129,15 @@ ngumpulyuk-frontend/
 
 ## Scripts npm
 
-| Perintah | Keterangan |
-|----------|------------|
-| `npm run dev` | Dev server + HMR |
-| `npm run build` | Build production |
+| Perintah          | Keterangan          |
+| ----------------- | ------------------- |
+| `npm run dev`     | Dev server + HMR    |
+| `npm run build`   | Build production    |
 | `npm run preview` | Preview build lokal |
-| `npm run lint` | ESLint |
+| `npm run lint`    | ESLint              |
 
 ## Koneksi ke backend
 
-Pastikan `VITE_API_BASE_URL` mengarah ke backend (`/api` tanpa `/v1` — client menambahkan prefix versi).
+Pastikan `VITE_API_BASE_URL` mengarah ke backend.
 
 CORS di backend harus mengizinkan origin frontend (`FRONTEND_URL`).
-
-## Lisensi
-
-Proyek privat — sesuaikan dengan kebijakan tim Anda.
