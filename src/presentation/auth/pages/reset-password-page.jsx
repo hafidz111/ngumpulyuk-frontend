@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { validateRegistrationPassword } from '@/application/auth/validate-registration-password';
 import { AUTH_FORM_INPUT_CLASS } from '@/presentation/layout/app-shell-chrome';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
@@ -31,8 +32,15 @@ export default function ResetPasswordPage() {
       return;
     }
     const form = e.currentTarget;
-    const password = form.password?.value ?? '';
-    const confirmPassword = form.confirmPassword?.value ?? '';
+    const password = String(form.password?.value ?? '');
+    const confirmPassword = String(form.confirmPassword?.value ?? '');
+
+    const passwordValidation = validateRegistrationPassword(password);
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.message ?? 'Kata sandi tidak valid.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Konfirmasi kata sandi tidak cocok.');
       return;
@@ -124,6 +132,9 @@ export default function ResetPasswordPage() {
                   )}
                 </button>
               </div>
+              <p className='text-xs text-muted-foreground'>
+                Minimal 8 karakter, huruf kapital, huruf kecil, dan angka.
+              </p>
             </div>
 
             <div className='space-y-2'>
@@ -144,6 +155,7 @@ export default function ResetPasswordPage() {
                   type={showConfirm ? 'text' : 'password'}
                   autoComplete='new-password'
                   required
+                  minLength={8}
                   className={cn(
                     AUTH_FORM_INPUT_CLASS,
                     'h-12 rounded-full pl-11 pr-12 text-sm',
