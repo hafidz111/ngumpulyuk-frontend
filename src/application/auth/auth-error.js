@@ -56,6 +56,13 @@ export function translateAuthMessage(message) {
   if (lower.includes('invalid') && lower.includes('token')) {
     return AUTH_MESSAGE_ID['token is invalid or has expired'];
   }
+  if (
+    lower.includes('smtp diblokir') ||
+    lower.includes('errno 101') ||
+    lower.includes('network is unreachable')
+  ) {
+    return 'Email OTP tidak bisa dikirim dari server production (SMTP diblokir). Coba daftar dengan Google, atau hubungi admin.';
+  }
   if (lower.includes('continue your login with')) {
     const provider = raw.replace(/^please continue your login with\s*/i, '').trim();
     if (provider === 'email') {
