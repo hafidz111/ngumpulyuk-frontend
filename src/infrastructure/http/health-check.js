@@ -15,15 +15,19 @@ export function getHealthLivenessUrl() {
   return `${getApiOrigin()}/health/`;
 }
 
+/**
+ * Pakai endpoint API publik — path `/health/` sering diblokir ad blocker (ERR_BLOCKED_BY_CLIENT).
+ */
 export function getHealthReadinessUrl() {
-  return `${getApiOrigin()}/health/ready/`;
+  const base = API_BASE_URL.replace(/\/$/, '');
+  return `${base}/v1/public/ping/`;
 }
 
 export async function checkBackendReady({
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
   const url = getHealthReadinessUrl();
-  if (!url || url === '/health/ready/') return false;
+  if (!url || !url.includes('/v1/public/ping')) return false;
 
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);

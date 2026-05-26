@@ -10,14 +10,21 @@ import {
   setAccessToken,
 } from '@/infrastructure/http/token-storage';
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
   withCredentials: false,
 });
+
+function isAuthRoute(url) {
+  return /\/auth\//.test(String(url ?? ''));
+}
 
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
@@ -51,12 +58,16 @@ apiClient.interceptors.response.use(
     const isRefreshRequest = url.includes('/auth/refresh');
 
     if (!error.response) {
-      redirectToMaintenance();
+      if (!isAuthRoute(url)) {
+        redirectToMaintenance();
+      }
       return Promise.reject(error);
     }
 
     if (status === 502 || status === 503) {
-      redirectToMaintenance();
+      if (!isAuthRoute(url)) {
+        redirectToMaintenance();
+      }
       return Promise.reject(error);
     }
 

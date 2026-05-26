@@ -18,6 +18,8 @@ const AUTH_MESSAGE_ID = {
   'network error': 'Koneksi bermasalah. Periksa internet lalu coba lagi.',
   'no active account found with the given credentials':
     'Email atau kata sandi salah.',
+  'user with this email address already exists.':
+    'Email sudah terdaftar. Silakan login atau gunakan email lain.',
 };
 
 /** @type {Record<string, string>} */
@@ -55,8 +57,60 @@ export function translateAuthMessage(message) {
   if (lower.includes('continue your login with')) {
     return `Lanjutkan login dengan akun yang sama (${raw.replace(/^please continue your login with\s*/i, '')}).`;
   }
+  if (
+    lower.includes('already exists') &&
+    (lower.includes('email') || lower.includes('user with this'))
+  ) {
+    return AUTH_MESSAGE_ID['user with this email address already exists.'];
+  }
 
   return raw;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+function firstStringFromFieldError(value) {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (Array.isArray(value) && value.length > 0) {
+    const first = value[0];
+    if (typeof first === 'string' && first.trim()) return first.trim();
+  }
+  return null;
+}
+
+/** @type {readonly string[]} */
+const FIELD_ERROR_PRIORITY = [
+  'email',
+  'password',
+  'password_confirm',
+  'full_name',
+  'non_field_errors',
+];
+
+/**
+ * @param {unknown} details
+ * @returns {string | null}
+ */
+function extractMessageFromErrorDetails(details) {
+  if (!details || typeof details !== 'object' || Array.isArray(details)) {
+    return null;
+  }
+
+  const record = /** @type {Record<string, unknown>} */ (details);
+
+  for (const key of FIELD_ERROR_PRIORITY) {
+    const msg = firstStringFromFieldError(record[key]);
+    if (msg) return msg;
+  }
+
+  for (const value of Object.values(record)) {
+    const msg = firstStringFromFieldError(value);
+    if (msg) return msg;
+  }
+
+  return null;
 }
 
 /**
@@ -74,8 +128,15 @@ function extractMessageFromData(data) {
 
   if (d.success === false && d.error && typeof d.error === 'object') {
     const nested = /** @type {Record<string, unknown>} */ (d.error);
+    const fromDetails = extractMessageFromErrorDetails(nested.details);
+    if (fromDetails) return fromDetails;
+
     if (typeof nested.message === 'string' && nested.message.trim()) {
-      return nested.message.trim();
+      const msg = nested.message.trim();
+      const isGeneric =
+        msg.toLowerCase() === 'validation error' ||
+        msg.toLowerCase() === 'data tidak valid. periksa isian kamu.';
+      if (!isGeneric) return msg;
     }
   }
 
@@ -138,6 +199,39 @@ export function getAuthErrorMessage(
   }
 
   return fallback;
+}
+
+/**
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export function isRequestTimeoutError(error) {
+  const err = /** @type {{ code?: string; message?: string } | null} */ (error);
+  if (err?.code === 'ECONNABORTED') return true;
+  const msg = String(err?.message ?? '').toLowerCase();
+  return msg.includes('timeout');
+}
+
+/**
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export function isServiceUnavailableError(error) {
+  const status = getApiErrorStatus(error);
+  if (status === 502 || status === 503) return true;
+  const err = /** @type {{ response?: unknown } | null} */ (error);
+  return !err?.response && isRequestTimeoutError(error);
+}
+
+/**
+ * @param {unknown} error
+ * @returns {string}
+ */
+export function getServiceUnavailableMessage(error) {
+  if (isRequestTimeoutError(error)) {
+    return 'Server tidak merespons. Jika ini pertama kali setelah lama idle, tunggu ~30 detik lalu coba lagi.';
+  }
+  return 'Layanan sibuk atau sedang dibangunkan. Coba lagi dalam beberapa menit.';
 }
 
 /**

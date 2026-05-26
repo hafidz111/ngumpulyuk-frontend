@@ -96,7 +96,7 @@ export function SignupForm({
               </div>
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
               <div className='space-y-2'>
                 <Label
                   htmlFor='register-password'
@@ -171,7 +171,9 @@ export function SignupForm({
               </div>
 
               {passwordError ? (
-                <p className='col-span-2 text-sm text-destructive'>{passwordError}</p>
+                <p className='text-sm text-destructive md:col-span-2'>
+                  {passwordError}
+                </p>
               ) : null}
             </div>
           </div>

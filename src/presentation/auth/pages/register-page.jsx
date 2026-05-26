@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { getAuthErrorMessage, isApiErrorCode } from '@/application/auth/auth-error';
+import {
+  getAuthErrorMessage,
+  getServiceUnavailableMessage,
+  isApiErrorCode,
+  isServiceUnavailableError,
+} from '@/application/auth/auth-error';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { SignupForm } from '../../components/signup-form';
 import { ROUTES } from '../../../shared/config/routes';
@@ -43,6 +48,10 @@ export default function RegisterPage() {
       );
       navigate(ROUTES.verifyEmail, { replace: true });
     } catch (err) {
+      if (isServiceUnavailableError(err)) {
+        toast.error(getServiceUnavailableMessage(err), { duration: 5000 });
+        return;
+      }
       if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_EXISTS'])) {
         toast.error(
           'Email sudah terdaftar. Silakan login atau gunakan email lain.',
