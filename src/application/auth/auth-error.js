@@ -29,6 +29,8 @@ const AUTH_CODE_ID = {
   NOT_FOUND: 'Data tidak ditemukan.',
   CONFLICT: 'Permintaan bentrok dengan data yang ada.',
   VALIDATION_ERROR: 'Data tidak valid. Periksa isian kamu.',
+  EMAIL_DELIVERY_FAILED:
+    'Gagal mengirim email OTP. Periksa alamat email atau coba lagi dalam beberapa menit.',
 };
 
 /**
