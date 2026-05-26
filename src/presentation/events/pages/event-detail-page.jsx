@@ -35,12 +35,7 @@ import {
   EventDetailSkeleton,
 } from '@/presentation/components/skeletons';
 import { formatTimeId, formatLocation, formatEventDateRange } from '@/shared/lib/formatters';
-
-const DIFFICULTY_LABEL = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-};
+import { DIFFICULTY_LABELS } from '../event-data';
 
 const DIFFICULTY_COLORS = {
   beginner: 'bg-emerald-100 text-emerald-700',
@@ -322,7 +317,7 @@ export default function EventDetailPage() {
               </span>
             ) : null}
             <span className={cn('rounded-full px-3 py-1 text-xs font-bold uppercase', diffClass)}>
-              {DIFFICULTY_LABEL[event.difficulty_level] || event.difficulty_level}
+              {DIFFICULTY_LABELS[event.difficulty_level] || event.difficulty_level}
             </span>
           </div>
           {/* Share */}
@@ -361,7 +356,7 @@ export default function EventDetailPage() {
               <InfoItem icon={Clock} label='Waktu' value={timeDisplay} />
               <InfoItem icon={MapPin} label='Lokasi' value={locationDisplay} />
               <InfoItem icon={Users} label='Peserta' value={`${normalizedParticipantCount}/${maxP ?? '∞'}`} />
-              <InfoItem icon={Target} label='Level' value={DIFFICULTY_LABEL[event.difficulty_level] || event.difficulty_level} />
+              <InfoItem icon={Target} label='Level' value={DIFFICULTY_LABELS[event.difficulty_level] || event.difficulty_level} />
               {event.is_competition ? (
                 <InfoItem icon={Trophy} label='Tipe' value='Kompetisi' />
               ) : null}

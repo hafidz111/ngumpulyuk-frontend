@@ -19,10 +19,16 @@ export function extractEventCategories(events = []) {
     .map((label) => ({ id: label, label }));
 }
 
+export const DIFFICULTY_LABELS = {
+  beginner: 'Pemula',
+  intermediate: 'Menengah',
+  advanced: 'Lanjutan',
+};
+
 export const DIFFICULTY_LEVELS = [
-  { id: 'beginner', label: 'Beginner' },
-  { id: 'intermediate', label: 'Intermediate' },
-  { id: 'advanced', label: 'Advanced' },
+  { id: 'beginner', label: DIFFICULTY_LABELS.beginner },
+  { id: 'intermediate', label: DIFFICULTY_LABELS.intermediate },
+  { id: 'advanced', label: DIFFICULTY_LABELS.advanced },
 ];
 
 export const EVENT_STATUS_OPTIONS = [

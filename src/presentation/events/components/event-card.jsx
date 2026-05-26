@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users, Trophy, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
+import { DIFFICULTY_LABELS } from '../event-data';
 
 const DIFFICULTY_COLORS = {
   beginner: 'bg-emerald-100 text-emerald-700',
@@ -82,7 +83,7 @@ export function EventCard({ event, className, idx = 0 }) {
                 diffClass,
               )}
             >
-              {event.difficulty_level}
+              {DIFFICULTY_LABELS[event.difficulty_level] ?? event.difficulty_level}
             </div>
           )}
         </div>
