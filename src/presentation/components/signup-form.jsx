@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
+import { EMAIL_PASSWORD_REGISTRATION_ENABLED } from '@/shared/config/features';
 import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
@@ -17,12 +18,39 @@ const AUTH_ICON_CLASS =
 const AUTH_TOGGLE_CLASS =
   'absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
 
+function TermsNotice() {
+  return (
+    <p className='text-center text-xs leading-relaxed text-muted-foreground'>
+      Dengan mendaftar, kamu menyetujui{' '}
+      <Link
+        to={ROUTES.terms}
+        className='font-medium text-primary-container hover:underline'
+        target='_blank'
+        rel='noopener noreferrer'
+      >
+        Syarat & Ketentuan
+      </Link>{' '}
+      serta{' '}
+      <Link
+        to={ROUTES.privacy}
+        className='font-medium text-primary-container hover:underline'
+        target='_blank'
+        rel='noopener noreferrer'
+      >
+        Kebijakan Privasi
+      </Link>{' '}
+      kami.
+    </p>
+  );
+}
+
 /**
  * @param {import('react').ComponentProps<'form'> & {
  *   passwordError?: string;
  *   isSubmitting?: boolean;
  *   onGoogleCredential?: (jwt: string) => void;
  *   isGoogleLoading?: boolean;
+ *   emailRegistrationEnabled?: boolean;
  * }} props
  */
 export function SignupForm({
@@ -32,14 +60,55 @@ export function SignupForm({
   onSubmit,
   onGoogleCredential,
   isGoogleLoading,
+  emailRegistrationEnabled = EMAIL_PASSWORD_REGISTRATION_ENABLED,
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [fieldError, setFieldError] = useState('');
+
+  if (!emailRegistrationEnabled) {
+    return (
+      <div className={cn('w-full', className)}>
+        <Card className='border-0 bg-card shadow-[0_8px_40px_-4px_hsl(var(--foreground)/0.08)] rounded-[1.75rem]'>
+          <div className='flex flex-col gap-6 p-8 md:p-9'>
+            <div className='text-center'>
+              <h1 className='font-display text-2xl font-bold tracking-tight text-foreground'>
+                Buat akun NgumpulYuk
+              </h1>
+              <p className='mt-2 text-sm text-muted-foreground'>
+                Saat ini pendaftaran hanya tersedia dengan Google.
+              </p>
+            </div>
+
+            <GoogleSignInButton
+              text='signup_with'
+              onCredential={onGoogleCredential}
+              disabled={Boolean(isGoogleLoading)}
+            />
+            {isGoogleLoading ? (
+              <p className='text-center text-xs text-muted-foreground' role='status'>
+                Memverifikasi akun…
+              </p>
+            ) : null}
+
+            <TermsNotice />
+          </div>
+        </Card>
+
+        <p className='mt-8 text-center text-sm text-muted-foreground'>
+          Sudah punya akun?{' '}
+          <Link
+            to={ROUTES.login}
+            className='font-bold text-primary-container hover:underline'
+          >
+            Masuk
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   function handleFormSubmit(e) {
-    setFieldError('');
     onSubmit?.(e);
   }
 
@@ -178,31 +247,7 @@ export function SignupForm({
             </div>
           </div>
 
-          <p className='text-center text-xs leading-relaxed text-muted-foreground'>
-            Dengan mendaftar, kamu menyetujui{' '}
-            <Link
-              to={ROUTES.terms}
-              className='font-medium text-primary-container hover:underline'
-              target='_blank'
-              rel='noopener noreferrer'
-            >
-              Syarat & Ketentuan
-            </Link>{' '}
-            serta{' '}
-            <Link
-              to={ROUTES.privacy}
-              className='font-medium text-primary-container hover:underline'
-              target='_blank'
-              rel='noopener noreferrer'
-            >
-              Kebijakan Privasi
-            </Link>{' '}
-            kami.
-          </p>
-
-          {fieldError ? (
-            <p className='text-center text-sm text-destructive'>{fieldError}</p>
-          ) : null}
+          <TermsNotice />
 
           <Button
             type='submit'
