@@ -7,7 +7,6 @@ import {
   Clock,
   FileText,
   Image as ImageIcon,
-  Loader2,
   MapPin,
   Plus,
   Tag,
@@ -20,11 +19,16 @@ import {
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/presentation/components/ui/button';
+import { ButtonBusySkeleton } from '@/presentation/components/skeletons';
 import { Calendar } from '@/presentation/components/ui/calendar';
 import { Card } from '@/presentation/components/ui/card';
 import { RequiredMark } from '@/presentation/components/required-mark';
-import { ThemedInput, ThemedTextarea } from '@/presentation/components/themed-form-field';
-import { isSameCalendarDay, TimeSelectField } from '@/presentation/components/time-select-field';
+import {
+  ThemedInput,
+  ThemedTextarea,
+} from '@/presentation/components/themed-form-field';
+import { isSameCalendarDay } from '@/presentation/components/time-select-utils';
+import { TimeSelectField } from '@/presentation/components/time-select-field';
 import { Label } from '@/presentation/components/ui/label';
 import {
   APP_SHELL_FORM_PICKER_CLASS,
@@ -53,7 +57,10 @@ import { getAuthErrorMessage } from '@/application/auth/auth-error';
 
 import { eventsApi } from '@/infrastructure/events/events-api';
 
-import { AREA_OPTIONS, DIFFICULTY_LEVELS, extractEventCategories } from '../event-data';
+import { DIFFICULTY_LEVELS } from '../event-data';
+import { LocationAreaSelect } from '@/presentation/components/location-area-select';
+import { resolveLocation } from '@/shared/lib/indonesia-locations';
+import { parseCategoriesResponse } from '../lib/parse-categories-response';
 import {
   isEndDateBeforeStart,
   validateEventSchedule,
@@ -64,11 +71,11 @@ function toTitleCase(str) {
   if (!str) return '';
   return str.replace(
     /\w\S*/g,
-    (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
+    (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase(),
   );
 }
 
-const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3 MB
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
 
 /**
  * @param {{
@@ -76,7 +83,6 @@ const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3 MB
  *   onSubmit: (body: Record<string, unknown>) => Promise<void>;
  *   onCancel: () => void;
  *   submitLabel?: string;
- *   isEdit?: boolean;
  * }} props
  */
 export function EventForm({
@@ -84,7 +90,6 @@ export function EventForm({
   onSubmit,
   onCancel,
   submitLabel = 'Buat Event',
-  isEdit = false,
 }) {
   const fileInputRef = useRef(null);
   const timeInputRef = useRef(null);
@@ -104,19 +109,31 @@ export function EventForm({
   });
   const [endCalendarOpen, setEndCalendarOpen] = useState(false);
   const [endTime, setEndTime] = useState(initialData.end_time ?? '');
-  const [registrationDeadlineEnabled, setRegistrationDeadlineEnabled] = useState(
-    Boolean(initialData.registration_deadline || initialData.registration_deadline_time),
+  const [registrationDeadlineEnabled, setRegistrationDeadlineEnabled] =
+    useState(
+      Boolean(
+        initialData.registration_deadline ||
+        initialData.registration_deadline_time,
+      ),
+    );
+  const [registrationDeadlineDate, setRegistrationDeadlineDate] = useState(
+    () => {
+      if (initialData.registration_deadline)
+        return new Date(initialData.registration_deadline);
+      return undefined;
+    },
   );
-  const [registrationDeadlineDate, setRegistrationDeadlineDate] = useState(() => {
-    if (initialData.registration_deadline) return new Date(initialData.registration_deadline);
-    return undefined;
-  });
-  const [registrationDeadlineCalendarOpen, setRegistrationDeadlineCalendarOpen] = useState(false);
+  const [
+    registrationDeadlineCalendarOpen,
+    setRegistrationDeadlineCalendarOpen,
+  ] = useState(false);
   const registrationDeadlineTimeInputRef = useRef(null);
   const [registrationDeadlineTime, setRegistrationDeadlineTime] = useState(
     initialData.registration_deadline_time ?? '',
   );
-  const [locationArea, setLocationArea] = useState(initialData.location_area ?? '');
+  const [locationArea, setLocationArea] = useState(
+    initialData.location_area ?? '',
+  );
   const [locationAddress, setLocationAddress] = useState(
     initialData.location_address ?? '',
   );
@@ -127,7 +144,9 @@ export function EventForm({
     initialData.longitude != null ? String(initialData.longitude) : '',
   );
   const [maxParticipants, setMaxParticipants] = useState(
-    initialData.max_participants != null ? String(initialData.max_participants) : '',
+    initialData.max_participants != null
+      ? String(initialData.max_participants)
+      : '',
   );
   const [isCompetition, setIsCompetition] = useState(
     initialData.is_competition ?? false,
@@ -142,7 +161,6 @@ export function EventForm({
 
   const [categories, setCategories] = useState([]);
   const [isSearchingCategories, setIsSearchingCategories] = useState(false);
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryContainerRef = useRef(null);
 
@@ -155,7 +173,10 @@ export function EventForm({
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (categoryContainerRef.current && !categoryContainerRef.current.contains(event.target)) {
+      if (
+        categoryContainerRef.current &&
+        !categoryContainerRef.current.contains(event.target)
+      ) {
         setCategoryDropdownOpen(false);
       }
     }
@@ -168,13 +189,8 @@ export function EventForm({
     if (!category.trim()) {
       const loadInitialCategories = async () => {
         try {
-          const res = await eventsApi.list({ limit: 200, offset: 0 });
-          const payload = res.data?.data || res.data;
-          let events = [];
-          if (Array.isArray(payload)) events = payload;
-          else if (payload?.events) events = payload.events;
-          else if (payload?.results) events = payload.results;
-          if (active) setCategories(extractEventCategories(events));
+          const res = await eventsApi.categories();
+          if (active) setCategories(parseCategoriesResponse(res.data));
         } catch {
           if (active) setCategories([]);
         }
@@ -187,9 +203,7 @@ export function EventForm({
       setIsSearchingCategories(true);
       try {
         const res = await eventsApi.categories({ search: category });
-        const data = res.data;
-        let items = Array.isArray(data) ? data : (data?.data?.results || data?.data?.categories || data?.categories || data?.results || []);
-        if (active) setCategories(items);
+        if (active) setCategories(parseCategoriesResponse(res.data));
       } catch {
         if (active) setCategories([]);
       } finally {
@@ -204,7 +218,9 @@ export function EventForm({
 
   const [coverUrl, setCoverUrl] = useState(initialData.cover_image ?? '');
   const [coverFile, setCoverFile] = useState(null);
-  const [coverPreview, setCoverPreview] = useState(initialData.cover_image ?? '');
+  const [coverPreview, setCoverPreview] = useState(
+    initialData.cover_image ?? '',
+  );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -346,7 +362,9 @@ export function EventForm({
         try {
           finalCoverUrl = await uploadEventCover(coverFile);
         } catch (err) {
-          toast.error('Gagal upload gambar: ' + (err.message || 'Unknown error'));
+          toast.error(
+            'Gagal upload gambar: ' + (err.message || 'Unknown error'),
+          );
           setIsSubmitting(false);
           setIsUploadingImage(false);
           return;
@@ -365,13 +383,13 @@ export function EventForm({
         end_time: endTime.trim() || null,
         registration_deadline: format(
           registrationDeadlineEnabled
-            ? (registrationDeadlineDate || eventDate)
+            ? registrationDeadlineDate || eventDate
             : eventDate,
           'yyyy-MM-dd',
         ),
         registration_deadline_time: registrationDeadlineEnabled
-          ? (registrationDeadlineTime.trim() || eventTime.trim() || null)
-          : (eventTime.trim() || null),
+          ? registrationDeadlineTime.trim() || eventTime.trim() || null
+          : eventTime.trim() || null,
         location_area: locationArea,
         location_address: locationAddress.trim(),
         latitude: latitude || '',
@@ -399,7 +417,10 @@ export function EventForm({
         <div className='p-6 md:p-8 space-y-6'>
           <div className='space-y-3'>
             <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
-              <ImageIcon className='size-4 text-primary-container' aria-hidden />
+              <ImageIcon
+                className='size-4 text-primary-container'
+                aria-hidden
+              />
               Cover Image Event
             </Label>
             {coverPreview ? (
@@ -418,7 +439,12 @@ export function EventForm({
                 </button>
               </div>
             ) : (
-              <label className={cn('cursor-pointer py-10', APP_SHELL_FORM_UPLOAD_ZONE_CLASS)}>
+              <label
+                className={cn(
+                  'cursor-pointer py-10',
+                  APP_SHELL_FORM_UPLOAD_ZONE_CLASS,
+                )}
+              >
                 <div className='rounded-xl bg-muted/50 p-3'>
                   <Upload className='size-6 text-muted-foreground' />
                 </div>
@@ -434,7 +460,10 @@ export function EventForm({
                   type='button'
                   variant='ghost'
                   size='sm'
-                  className={cn('mt-1 rounded-full px-6', APP_SHELL_SECONDARY_BUTTON_CLASS)}
+                  className={cn(
+                    'mt-1 rounded-full px-6',
+                    APP_SHELL_SECONDARY_BUTTON_CLASS,
+                  )}
                   onClick={(e) => {
                     e.preventDefault();
                     fileInputRef.current?.click();
@@ -455,7 +484,10 @@ export function EventForm({
 
           {/* Title */}
           <div className='space-y-2'>
-            <Label htmlFor='event-title' className='flex items-center gap-2 text-sm font-bold text-foreground'>
+            <Label
+              htmlFor='event-title'
+              className='flex items-center gap-2 text-sm font-bold text-foreground'
+            >
               <Type className='size-4 text-primary-container' aria-hidden />
               Judul Event <RequiredMark />
             </Label>
@@ -487,30 +519,42 @@ export function EventForm({
 
               {categoryDropdownOpen && (
                 <div className='absolute left-0 top-full z-[1010] mt-2 flex max-h-[16rem] w-full flex-col overflow-y-auto rounded-xl border border-border/60 bg-white shadow-lg'>
-                  {isSearchingCategories && <div className='p-3 text-center text-sm text-muted-foreground'>Pencarian...</div>}
+                  {isSearchingCategories && (
+                    <div className='p-3 text-center text-sm text-muted-foreground'>
+                      Pencarian...
+                    </div>
+                  )}
 
-                  {!isSearchingCategories && categories.map((c, i) => {
-                    const label = typeof c === 'string' ? c : c.name || c.label || c.id;
-                    if (!label) return null;
-                    return (
-                      <button
-                        key={i}
-                        type='button'
-                        onClick={() => {
-                          setCategory(label);
-                          setCategoryDropdownOpen(false);
-                        }}
-                        className='border-b border-border/40 bg-white px-4 py-2.5 text-left text-sm last:border-0 hover:bg-muted/50 focus:bg-muted/50'
-                      >
-                        {toTitleCase(label)}
-                      </button>
-                    );
-                  })}
+                  {!isSearchingCategories &&
+                    categories.map((c, i) => {
+                      const label =
+                        typeof c === 'string' ? c : c.name || c.label || c.id;
+                      if (!label) return null;
+                      return (
+                        <button
+                          key={i}
+                          type='button'
+                          onClick={() => {
+                            setCategory(label);
+                            setCategoryDropdownOpen(false);
+                          }}
+                          className='border-b border-border/40 bg-white px-4 py-2.5 text-left text-sm last:border-0 hover:bg-muted/50 focus:bg-muted/50'
+                        >
+                          {toTitleCase(label)}
+                        </button>
+                      );
+                    })}
 
-                  {!isSearchingCategories && category.trim() && !categories.some(c => {
-                    const label = typeof c === 'string' ? c : c.name || c.label || c.id;
-                    return label && label.toLowerCase() === category.trim().toLowerCase();
-                  }) && (
+                  {!isSearchingCategories &&
+                    category.trim() &&
+                    !categories.some((c) => {
+                      const label =
+                        typeof c === 'string' ? c : c.name || c.label || c.id;
+                      return (
+                        label &&
+                        label.toLowerCase() === category.trim().toLowerCase()
+                      );
+                    }) && (
                       <button
                         type='button'
                         onClick={handleCreateCategory}
@@ -520,9 +564,13 @@ export function EventForm({
                       </button>
                     )}
 
-                  {!isSearchingCategories && categories.length === 0 && !category.trim() && (
-                    <div className='p-3 text-center text-sm text-muted-foreground'>Ketik untuk mencari kategori lain</div>
-                  )}
+                  {!isSearchingCategories &&
+                    categories.length === 0 &&
+                    !category.trim() && (
+                      <div className='p-3 text-center text-sm text-muted-foreground'>
+                        Ketik untuk mencari kategori lain
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -530,7 +578,10 @@ export function EventForm({
 
           {/* Description */}
           <div className='space-y-2'>
-            <Label htmlFor='event-desc' className='flex items-center gap-2 text-sm font-bold text-foreground'>
+            <Label
+              htmlFor='event-desc'
+              className='flex items-center gap-2 text-sm font-bold text-foreground'
+            >
               <FileText className='size-4 text-primary-container' aria-hidden />
               Deskripsi Event <RequiredMark />
             </Label>
@@ -547,7 +598,10 @@ export function EventForm({
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
             <div className='space-y-2'>
               <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
-                <CalendarIcon className='size-4 text-primary-container' aria-hidden />
+                <CalendarIcon
+                  className='size-4 text-primary-container'
+                  aria-hidden
+                />
                 Tanggal <RequiredMark />
               </Label>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -559,17 +613,26 @@ export function EventForm({
                       !eventDate && APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
                     )}
                   >
-                    {eventDate ? format(eventDate, 'dd/MM/yyyy') : 'Pilih tanggal'}
+                    {eventDate
+                      ? format(eventDate, 'dd/MM/yyyy')
+                      : 'Pilih tanggal'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className='w-auto border border-border/60 bg-white p-0 shadow-lg' align='start'>
+                <PopoverContent
+                  className='w-auto border border-border/60 bg-white p-0 shadow-lg'
+                  align='start'
+                >
                   <Calendar
                     className='bg-white'
                     mode='single'
                     selected={eventDate}
                     onSelect={(d) => {
                       setEventDate(d);
-                      if (d && endDate && isBefore(startOfDay(endDate), startOfDay(d))) {
+                      if (
+                        d &&
+                        endDate &&
+                        isBefore(startOfDay(endDate), startOfDay(d))
+                      ) {
                         setEndDate(undefined);
                       }
                       setCalendarOpen(false);
@@ -581,7 +644,10 @@ export function EventForm({
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='event-time' className='flex items-center gap-2 text-sm font-bold text-foreground'>
+              <Label
+                htmlFor='event-time'
+                className='flex items-center gap-2 text-sm font-bold text-foreground'
+              >
                 <Clock className='size-4 text-primary-container' aria-hidden />
                 Waktu <RequiredMark />
               </Label>
@@ -602,7 +668,10 @@ export function EventForm({
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
             <div className='space-y-2'>
               <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
-                <CalendarIcon className='size-4 text-primary-container' aria-hidden />
+                <CalendarIcon
+                  className='size-4 text-primary-container'
+                  aria-hidden
+                />
                 Tanggal Selesai <RequiredMark />
               </Label>
               <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
@@ -614,19 +683,27 @@ export function EventForm({
                       !endDate && APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
                     )}
                   >
-                    {endDate ? format(endDate, 'dd/MM/yyyy') : 'Pilih tanggal selesai'}
+                    {endDate
+                      ? format(endDate, 'dd/MM/yyyy')
+                      : 'Pilih tanggal selesai'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className='w-auto border border-border/60 bg-white p-0 shadow-lg' align='start'>
+                <PopoverContent
+                  className='w-auto border border-border/60 bg-white p-0 shadow-lg'
+                  align='start'
+                >
                   <Calendar
                     className='bg-white'
                     mode='single'
                     selected={endDate}
                     disabled={(date) =>
-                      eventDate ? isBefore(startOfDay(date), startOfDay(eventDate)) : false
+                      eventDate
+                        ? isBefore(startOfDay(date), startOfDay(eventDate))
+                        : false
                     }
                     onSelect={(d) => {
-                      if (d && eventDate && isEndDateBeforeStart(eventDate, d)) return;
+                      if (d && eventDate && isEndDateBeforeStart(eventDate, d))
+                        return;
                       setEndDate(d);
                       setEndCalendarOpen(false);
                     }}
@@ -637,7 +714,10 @@ export function EventForm({
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='event-end-time' className='flex items-center gap-2 text-sm font-bold text-foreground'>
+              <Label
+                htmlFor='event-end-time'
+                className='flex items-center gap-2 text-sm font-bold text-foreground'
+              >
                 <Clock className='size-4 text-primary-container' aria-hidden />
                 Waktu Selesai <RequiredMark />
               </Label>
@@ -660,7 +740,10 @@ export function EventForm({
                   type='time'
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className={cn('cursor-text', scheduleError && 'border-destructive/60')}
+                  className={cn(
+                    'cursor-text',
+                    scheduleError && 'border-destructive/60',
+                  )}
                 />
               )}
             </div>
@@ -677,11 +760,15 @@ export function EventForm({
             <div className='flex items-center justify-between gap-4'>
               <div>
                 <Label className='flex items-center gap-2 text-sm font-bold text-foreground'>
-                  <CalendarIcon className='size-4 text-primary-container' aria-hidden />
+                  <CalendarIcon
+                    className='size-4 text-primary-container'
+                    aria-hidden
+                  />
                   Batas Registrasi Event
                 </Label>
                 <p className='mt-1 text-xs text-muted-foreground'>
-                  Jika tidak diaktifkan, batas registrasi otomatis mengikuti tanggal & waktu mulai event.
+                  Jika tidak diaktifkan, batas registrasi otomatis mengikuti
+                  tanggal & waktu mulai event.
                 </p>
               </div>
               <Switch
@@ -705,7 +792,8 @@ export function EventForm({
                         type='button'
                         className={cn(
                           APP_SHELL_FORM_PICKER_CLASS,
-                          !registrationDeadlineDate && APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
+                          !registrationDeadlineDate &&
+                            APP_SHELL_FORM_PICKER_PLACEHOLDER_CLASS,
                         )}
                       >
                         {registrationDeadlineDate
@@ -713,7 +801,10 @@ export function EventForm({
                           : 'Ikuti tanggal mulai event'}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className='w-auto border border-border/60 bg-white p-0 shadow-lg' align='start'>
+                    <PopoverContent
+                      className='w-auto border border-border/60 bg-white p-0 shadow-lg'
+                      align='start'
+                    >
                       <Calendar
                         className='bg-white'
                         mode='single'
@@ -729,7 +820,10 @@ export function EventForm({
                 </div>
 
                 <div className='space-y-2'>
-                  <Label htmlFor='registration-deadline-time' className='text-sm font-semibold text-foreground'>
+                  <Label
+                    htmlFor='registration-deadline-time'
+                    className='text-sm font-semibold text-foreground'
+                  >
                     Waktu Batas Registrasi (Opsional)
                   </Label>
                   <ThemedInput
@@ -737,9 +831,15 @@ export function EventForm({
                     id='registration-deadline-time'
                     type='time'
                     value={registrationDeadlineTime}
-                    onChange={(e) => setRegistrationDeadlineTime(e.target.value)}
-                    onClick={() => registrationDeadlineTimeInputRef.current?.showPicker?.()}
-                    onFocus={() => registrationDeadlineTimeInputRef.current?.showPicker?.()}
+                    onChange={(e) =>
+                      setRegistrationDeadlineTime(e.target.value)
+                    }
+                    onClick={() =>
+                      registrationDeadlineTimeInputRef.current?.showPicker?.()
+                    }
+                    onFocus={() =>
+                      registrationDeadlineTimeInputRef.current?.showPicker?.()
+                    }
                     className='cursor-text'
                   />
                 </div>
@@ -753,25 +853,25 @@ export function EventForm({
               <MapPin className='size-4 text-primary-container' aria-hidden />
               Area Lokasi <RequiredMark />
             </Label>
-            <Select value={locationArea} onValueChange={setLocationArea}>
-              <SelectTrigger className={APP_SHELL_FORM_SELECT_CLASS}>
-                <SelectValue placeholder='Pilih area' />
-              </SelectTrigger>
-              <SelectContent
-                className={APP_SHELL_FORM_DROPDOWN_CONTENT_CLASS}
-                position='popper'
-              >
-                {AREA_OPTIONS.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LocationAreaSelect
+              value={locationArea}
+              onValueChange={(id) => {
+                setLocationArea(id);
+                const row = resolveLocation(id);
+                if (row?.latitude != null && row?.longitude != null) {
+                  setLatitude(String(row.latitude));
+                  setLongitude(String(row.longitude));
+                }
+              }}
+              placeholder='Pilih kabupaten/kota'
+            />
           </div>
 
           <div className='space-y-2'>
-            <Label htmlFor='event-address' className='text-sm font-bold text-foreground'>
+            <Label
+              htmlFor='event-address'
+              className='text-sm font-bold text-foreground'
+            >
               Alamat Lengkap <RequiredMark />
             </Label>
             <ThemedInput
@@ -797,7 +897,10 @@ export function EventForm({
 
           {/* Max Participants */}
           <div className='space-y-2'>
-            <Label htmlFor='event-max-p' className='flex items-center gap-2 text-sm font-bold text-foreground'>
+            <Label
+              htmlFor='event-max-p'
+              className='flex items-center gap-2 text-sm font-bold text-foreground'
+            >
               <Users className='size-4 text-primary-container' aria-hidden />
               Maksimal Peserta <RequiredMark />
             </Label>
@@ -824,7 +927,9 @@ export function EventForm({
                   onCheckedChange={setIsCompetition}
                 />
                 <span className='text-sm text-muted-foreground'>
-                  {isCompetition ? 'Ya, ini event kompetisi' : 'Bukan kompetisi'}
+                  {isCompetition
+                    ? 'Ya, ini event kompetisi'
+                    : 'Bukan kompetisi'}
                 </span>
               </div>
             </div>
@@ -833,7 +938,10 @@ export function EventForm({
               <Label className='text-sm font-bold text-foreground'>
                 Level Kesulitan
               </Label>
-              <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
+              <Select
+                value={difficultyLevel}
+                onValueChange={setDifficultyLevel}
+              >
                 <SelectTrigger className={APP_SHELL_FORM_SELECT_CLASS}>
                   <SelectValue placeholder='Pilih level' />
                 </SelectTrigger>
@@ -925,7 +1033,7 @@ export function EventForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2 className='size-4 animate-spin' />
+              <ButtonBusySkeleton />
               {isUploadingImage ? 'Mengupload gambar…' : 'Menyimpan…'}
             </>
           ) : (

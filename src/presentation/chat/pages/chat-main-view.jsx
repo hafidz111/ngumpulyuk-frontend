@@ -16,8 +16,11 @@ export default function ChatMainView() {
   const navigate = useNavigate();
   const { openSidebar, sendMessage, displayName, ...chat } = useChatContext();
   const sendMessageRef = useRef(sendMessage);
-  sendMessageRef.current = sendMessage;
   const consumedPromptRef = useRef('');
+
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   useEffect(() => {
     const prompt = readNavigationPrompt(location.state);
@@ -29,7 +32,7 @@ export default function ChatMainView() {
 
     navigate(location.pathname, { replace: true, state: null });
     void sendMessageRef.current(prompt);
-  }, [location.pathname, location.state, navigate]);
+  }, [location.key, location.pathname, location.state, navigate]);
 
   return (
     <div className='flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden'>

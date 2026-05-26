@@ -1,11 +1,16 @@
+import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
+import { ROUTES } from '@/shared/config/routes';
 import { MotionDiv, MotionH2, MotionP } from '../../lib/motion-primitives';
 import { Button } from '../../components/ui/button';
 
+/**
+ * @param {{ finalCta: Record<string, unknown> }} props
+ */
 export function LandingFinalCtaSection({ finalCta }) {
   return (
-    <section className='py-20 md:py-28'>
+    <section className='bg-surface py-20 md:py-28'>
       <div className='mx-auto max-w-7xl px-6 md:px-8'>
         <div className='text-center'>
           <MotionH2
@@ -32,9 +37,11 @@ export function LandingFinalCtaSection({ finalCta }) {
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
           >
-            <Button size='lg' type='button' className='gap-2 px-10 py-5 text-lg'>
-              {finalCta.cta}
-              <ArrowRight className='h-5 w-5' />
+            <Button size='lg' className='gap-2 px-10 py-5 text-lg' asChild>
+              <Link to={ROUTES.register}>
+                {finalCta.cta}
+                <ArrowRight className='h-5 w-5' />
+              </Link>
             </Button>
           </MotionDiv>
         </div>
@@ -46,7 +53,7 @@ export function LandingFinalCtaSection({ finalCta }) {
         >
           <img
             src={finalCta.image}
-            alt='Komunitas bersama'
+            alt='Komunitas NgumpulYuk'
             className='h-auto max-h-[420px] w-full object-cover md:max-h-[480px]'
           />
         </MotionDiv>

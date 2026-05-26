@@ -5,6 +5,8 @@ export const ROUTES = {
   maintenance: '/maintenance',
   login: '/login',
   register: '/register',
+  terms: '/syarat-ketentuan',
+  privacy: '/kebijakan-privasi',
   verifyEmail: '/verify-email',
   forgotPassword: '/forgot-password',
   passwordResetConfirm: '/password-reset-confirm/:uidb64/:token',

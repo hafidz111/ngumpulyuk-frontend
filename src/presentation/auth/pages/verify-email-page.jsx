@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { cn } from '@/lib/utils';
 import { getAuthErrorMessage, isApiErrorCode } from '@/application/auth/auth-error';
+import { AUTH_FORM_INPUT_CLASS } from '@/presentation/layout/app-shell-chrome';
 import { mapLoginResponse } from '@/application/auth/map-auth-response';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
@@ -170,7 +172,10 @@ export default function VerifyEmailPage() {
                 placeholder='Kode verifikasi'
                 value={otp}
                 onChange={(ev) => setOtp(ev.target.value)}
-                className='h-12 rounded-full border-border bg-background text-center text-lg tracking-[0.3em] shadow-none'
+                className={cn(
+                  AUTH_FORM_INPUT_CLASS,
+                  'h-12 rounded-full text-center text-lg tracking-[0.3em]',
+                )}
                 maxLength={12}
               />
             </div>

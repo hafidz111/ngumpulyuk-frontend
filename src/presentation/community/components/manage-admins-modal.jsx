@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Crown, Loader2, Search, Shield, UserPlus, X } from 'lucide-react';
+import { Crown, Search, Shield, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent } from '@/presentation/components/ui/dialog';
 import { Avatar, AvatarImage } from '@/presentation/components/ui/avatar';
+import {
+  ButtonBusySkeleton,
+  ListRowsSkeleton,
+} from '@/presentation/components/skeletons';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { communitiesApi } from '@/infrastructure/communities/communities-api';
@@ -145,9 +149,7 @@ export function ManageAdminsModal({ open, onClose, communityId, admins = [], onP
 
           {/* Member List */}
           {loading ? (
-            <div className='flex items-center justify-center py-8'>
-              <Loader2 className='size-5 animate-spin text-primary-container' />
-            </div>
+            <ListRowsSkeleton rows={4} />
           ) : filteredMembers.length === 0 ? (
             <p className='py-6 text-center text-sm text-muted-foreground'>
               {searchQuery ? 'Tidak ada member ditemukan' : 'Tidak ada member untuk dipromote'}
@@ -184,7 +186,7 @@ export function ManageAdminsModal({ open, onClose, communityId, admins = [], onP
                       className='rounded-full bg-primary-container px-4 h-9 text-[13px] font-semibold text-primary-foreground hover:bg-primary-container/90'
                     >
                       {promoting === user.id ? (
-                        <Loader2 className='size-4 animate-spin' />
+                        <ButtonBusySkeleton />
                       ) : (
                         <UserPlus className='size-4 mr-1' />
                       )}

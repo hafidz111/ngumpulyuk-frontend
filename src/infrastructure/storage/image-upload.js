@@ -3,9 +3,8 @@ import { supabase } from './supabase-client';
 const BUCKET = 'event-covers';
 
 /**
- * Upload an image file to Supabase Storage and return its public URL.
  * @param {File} file
- * @returns {Promise<string>} public URL of the uploaded image
+ * @returns {Promise<string>}
  */
 export async function uploadEventCover(file) {
   const ext = file.name.split('.').pop();
@@ -13,15 +12,15 @@ export async function uploadEventCover(file) {
   const filePath = `covers/${fileName}`;
 
   if (!supabase) {
-    throw new Error('Supabase client belum dikonfigurasi. Pastikan .env sudah diatur dengan benar.');
+    throw new Error(
+      'Supabase client belum dikonfigurasi. Pastikan .env sudah diatur dengan benar.',
+    );
   }
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
+  const { error } = await supabase.storage.from(BUCKET).upload(filePath, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
 
   if (error) {
     throw new Error(error.message || 'Gagal mengupload gambar.');
@@ -35,7 +34,6 @@ export async function uploadEventCover(file) {
 }
 
 /**
- * Upload thread image to Supabase Storage and return its public URL.
  * @param {File} file
  * @returns {Promise<string>}
  */
@@ -45,15 +43,15 @@ export async function uploadThreadImage(file) {
   const filePath = `threads/${fileName}`;
 
   if (!supabase) {
-    throw new Error('Supabase client belum dikonfigurasi. Pastikan .env sudah diatur dengan benar.');
+    throw new Error(
+      'Supabase client belum dikonfigurasi. Pastikan .env sudah diatur dengan benar.',
+    );
   }
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
+  const { error } = await supabase.storage.from(BUCKET).upload(filePath, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
 
   if (error) {
     throw new Error(error.message || 'Gagal mengupload gambar thread.');

@@ -1,4 +1,4 @@
-import { AREA_OPTIONS } from '@/presentation/events/event-data';
+import { resolveLocationLabel } from '@/shared/lib/indonesia-locations';
 
 export function formatDateId(dateStr) {
   if (!dateStr) return '';
@@ -10,9 +10,9 @@ export function formatDateId(dateStr) {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     }).format(date);
-  } catch (err) {
+  } catch {
     return dateStr;
   }
 }
@@ -23,7 +23,7 @@ export function formatTimeId(timeStr) {
 }
 
 export function formatLocation(address, areaId) {
-  const areaLabel = AREA_OPTIONS.find(a => a.id === areaId)?.label || areaId;
+  const areaLabel = resolveLocationLabel(areaId);
   const parts = [];
   if (address && address.trim()) parts.push(address.trim());
   if (areaLabel && areaLabel.trim()) parts.push(areaLabel.trim());
@@ -46,10 +46,14 @@ export function formatEventDateRange(startStr, endStr) {
     const fmtMon = new Intl.DateTimeFormat('id-ID', { month: 'long' });
     const fmtYr = new Intl.DateTimeFormat('id-ID', { year: 'numeric' });
 
-    const w1 = fmtWk.format(d1), w2 = fmtWk.format(d2);
-    const day1 = fmtDay.format(d1), day2 = fmtDay.format(d2);
-    const m1 = fmtMon.format(d1), m2 = fmtMon.format(d2);
-    const y1 = fmtYr.format(d1), y2 = fmtYr.format(d2);
+    const w1 = fmtWk.format(d1),
+      w2 = fmtWk.format(d2);
+    const day1 = fmtDay.format(d1),
+      day2 = fmtDay.format(d2);
+    const m1 = fmtMon.format(d1),
+      m2 = fmtMon.format(d2);
+    const y1 = fmtYr.format(d1),
+      y2 = fmtYr.format(d2);
 
     const weekdays = `${w1}-${w2}`;
 
@@ -60,9 +64,7 @@ export function formatEventDateRange(startStr, endStr) {
     } else {
       return `${weekdays}, ${day1} ${m1} ${y1} - ${day2} ${m2} ${y2}`;
     }
-  } catch (err) {
+  } catch {
     return `${formatDateId(startStr)} - ${formatDateId(endStr)}`;
   }
 }
-
-

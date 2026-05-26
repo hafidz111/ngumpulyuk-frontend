@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Filter, Loader2, Plus, Zap } from 'lucide-react';
+import { Filter, Plus, Zap } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
@@ -18,9 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/presentation/components/ui/select';
+import { OffsetPagination } from '@/presentation/components/offset-pagination';
+import { EventGridSkeleton } from '@/presentation/components/skeletons';
 import { EventCard } from '../components/event-card';
 import { parseEventsListResponse } from '../lib/parse-events-list-response';
-import { extractEventCategories } from '../event-data';
+import { parseCategoriesResponse } from '../lib/parse-categories-response';
 
 const LIMIT = 12;
 
@@ -46,9 +48,6 @@ function EventSection({
   showCreateOnEmpty = false,
   onPage,
 }) {
-  const hasMore = offset + LIMIT < total;
-  const hasPrev = offset > 0;
-
   return (
     <section className='space-y-4'>
       <div className='flex items-center justify-between gap-3'>
@@ -57,10 +56,8 @@ function EventSection({
       </div>
 
       {loading ? (
-        <div className='flex items-center justify-center py-16'>
-          <Loader2 className='size-8 animate-spin text-[#FF8000]' />
-        </div>
-      ) : events.length === 0 ? (
+        <EventGridSkeleton count={6} />
+      ) : (events ?? []).length === 0 ? (
         <div className='rounded-2xl border border-dashed border-border/70 bg-white px-4 py-10 text-center'>
           <p className='text-sm text-muted-foreground'>{emptyHint}</p>
           {showCreateOnEmpty ? (
@@ -78,33 +75,19 @@ function EventSection({
       ) : (
         <>
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-            {events.map((ev, idx) => (
+            {(events ?? []).map((ev, idx) => (
               <EventCard key={String(ev.id)} event={ev} idx={idx} />
             ))}
           </div>
-          {hasPrev || hasMore ? (
-            <div className='flex items-center justify-center gap-4'>
-              <Button
-                variant='outline'
-                disabled={!hasPrev}
-                onClick={() => onPage(Math.max(0, offset - LIMIT))}
-                className='rounded-full px-6'
-              >
-                Sebelumnya
-              </Button>
-              <span className='text-sm text-muted-foreground'>
-                {offset + 1}–{Math.min(offset + LIMIT, total)} dari {total}
-              </span>
-              <Button
-                variant='outline'
-                disabled={!hasMore}
-                onClick={() => onPage(offset + LIMIT)}
-                className='rounded-full px-6'
-              >
-                Selanjutnya
-              </Button>
-            </div>
-          ) : null}
+          <OffsetPagination
+            total={total}
+            limit={LIMIT}
+            offset={offset}
+            onOffsetChange={onPage}
+            loading={loading}
+            anchorId='events-list'
+            className='pt-2'
+          />
         </>
       )}
     </section>
@@ -129,7 +112,8 @@ export default function EventsListPage() {
     events: [],
     total: 0,
     offset: 0,
-    loading: true,
+    loading: false,
+    loaded: false,
   });
 
   const buildParams = useCallback(
@@ -148,32 +132,58 @@ export default function EventsListPage() {
       try {
         const res = await eventsApi.list(buildParams(status, offset, sort));
         const { events, total } = parseEventsListResponse(res.data);
-        setter({ events, total, offset, loading: false });
+        setter((prev) => ({
+          ...prev,
+          events: events ?? [],
+          total,
+          offset,
+          loading: false,
+          ...(status === 'past' ? { loaded: true } : {}),
+        }));
       } catch (err) {
         console.error(err);
-        setter({ events: [], total: 0, offset, loading: false });
+        setter((prev) => ({
+          ...prev,
+          events: [],
+          total: 0,
+          offset,
+          loading: false,
+          ...(status === 'past' ? { loaded: true } : {}),
+        }));
       }
     },
     [buildParams],
   );
 
-  const reloadAll = useCallback(() => {
+  const reloadUpcoming = useCallback(() => {
     void fetchSection('upcoming', 0, 'date_asc', setUpcoming);
+  }, [fetchSection]);
+
+  const reloadPast = useCallback(() => {
     void fetchSection('past', 0, 'date_desc', setPast);
   }, [fetchSection]);
 
+  const reloadAll = useCallback(() => {
+    reloadUpcoming();
+    setPast({ events: [], total: 0, offset: 0, loading: false, loaded: false });
+  }, [reloadUpcoming]);
+
   useEffect(() => {
-    reloadAll();
-  }, [reloadAll]);
+    reloadUpcoming();
+  }, [reloadUpcoming]);
+
+  useEffect(() => {
+    if (upcoming.loading || past.loaded) return;
+    reloadPast();
+  }, [upcoming.loading, past.loaded, reloadPast]);
 
   useEffect(() => {
     let active = true;
 
     const fetchCategories = async () => {
       try {
-        const res = await eventsApi.list({ limit: 200, offset: 0, status: 'upcoming' });
-        const { events } = parseEventsListResponse(res.data);
-        if (active) setCategoryOptions(extractEventCategories(events));
+        const res = await eventsApi.categories();
+        if (active) setCategoryOptions(parseCategoriesResponse(res.data));
       } catch {
         if (active) setCategoryOptions([]);
       }
@@ -197,7 +207,7 @@ export default function EventsListPage() {
 
   const hasActiveFilters = category || search;
   const eventCategories = useMemo(() => categoryOptions, [categoryOptions]);
-  const pageLoading = upcoming.loading && past.loading;
+  const pageLoading = upcoming.loading && upcoming.events.length === 0;
 
   return (
     <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
@@ -275,11 +285,14 @@ export default function EventsListPage() {
           ) : null}
         </div>
 
-        {pageLoading && upcoming.events.length === 0 && past.events.length === 0 ? (
-          <div className='flex items-center justify-center py-24'>
-            <Loader2 className='size-8 animate-spin text-[#FF8000]' />
-          </div>
-        ) : upcoming.events.length === 0 && past.events.length === 0 && !hasActiveFilters ? (
+        {pageLoading ? (
+          <EventGridSkeleton count={6} />
+        ) : !hasActiveFilters &&
+          !upcoming.loading &&
+          past.loaded &&
+          !past.loading &&
+          upcoming.events.length === 0 &&
+          past.events.length === 0 ? (
           <div className='flex flex-col items-center justify-center gap-4 py-24 text-center'>
             <div className='rounded-2xl bg-muted/50 p-5'>
               <Zap className='size-10 text-muted-foreground/40' />

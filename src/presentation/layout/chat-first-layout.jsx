@@ -2,14 +2,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/shared/config/routes';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { ChatContext } from '@/presentation/chat/context/chat-context';
 import { ChatSidebar } from '@/presentation/chat/components/chat-sidebar';
 import { useChatActivityStats } from '@/presentation/chat/hooks/use-chat-activity-stats';
 import { useNgumpskyChat } from '@/presentation/chat/hooks/use-ngumpsky-chat';
-import { Dialog, DialogContent } from '@/presentation/components/ui/dialog';
 import { ChatFirstMobileNav } from '@/presentation/layout/chat-first-mobile-nav';
+import { ShellMenuDialog } from '@/presentation/layout/shell-menu-dialog';
 
 function ChatFirstLayout() {
   const { isAuthenticated, user } = useAuth();
@@ -20,6 +19,7 @@ function ChatFirstLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   const handleQuickPrompt = useCallback(
     (text) => {
@@ -38,11 +38,13 @@ function ChatFirstLayout() {
   const contextValue = useMemo(
     () => ({
       ...chat,
+      sidebarOpen,
       openSidebar,
+      closeSidebar,
       handleQuickPrompt,
       displayName: user?.displayName ?? user?.username ?? '',
     }),
-    [chat, openSidebar, handleQuickPrompt, user],
+    [chat, sidebarOpen, openSidebar, closeSidebar, handleQuickPrompt, user],
   );
 
   if (!isAuthenticated) {
@@ -70,20 +72,15 @@ function ChatFirstLayout() {
 
         <ChatFirstMobileNav />
 
-        <Dialog open={sidebarOpen} onClose={setSidebarOpen}>
-          <DialogContent
-            onClose={() => setSidebarOpen(false)}
-            className='mx-0 flex h-[min(92dvh,100%)] max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl p-0 sm:mx-4 sm:rounded-2xl'
-          >
-            <ChatSidebar
-              stats={stats}
-              onQuickPrompt={handleQuickPrompt}
-              onNavigate={() => setSidebarOpen(false)}
-              showFooterProfile={false}
-              className='h-full min-h-0 flex-1 border-0'
-            />
-          </DialogContent>
-        </Dialog>
+        <ShellMenuDialog open={sidebarOpen} onClose={closeSidebar}>
+          <ChatSidebar
+            stats={stats}
+            onQuickPrompt={handleQuickPrompt}
+            onNavigate={() => setSidebarOpen(false)}
+            showFooterProfile={false}
+            className='h-full min-h-0 flex-1 border-0'
+          />
+        </ShellMenuDialog>
       </div>
     </ChatContext.Provider>
   );

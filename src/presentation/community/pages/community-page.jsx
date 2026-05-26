@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Loader2,
   MessageCircle,
   Plus,
   Users,
@@ -24,6 +23,13 @@ import { CommunityCard } from '../components/community-card';
 import { ThreadCard } from '../components/thread-card';
 import { ThreadComposer } from '../components/thread-composer';
 import { ThreadCommentsDialog } from '../components/thread-comments-dialog';
+import { parseThreadCommentsResponse } from '../lib/parse-thread-comments-response';
+import { OffsetPagination } from '@/presentation/components/offset-pagination';
+import {
+  CommunityGridSkeleton,
+  LoadMoreSkeleton,
+  ThreadFeedSkeleton,
+} from '@/presentation/components/skeletons';
 
 const LIMIT = 12;
 const FEED_LIMIT = 10;
@@ -240,13 +246,7 @@ export default function CommunityPage() {
     setCommentsLoading(true);
     try {
       const res = await communitiesApi.threadComments(thread.id, { limit: 50, offset: 0 });
-      const data = res.data;
-      let items = [];
-      if (Array.isArray(data)) items = data;
-      else if (Array.isArray(data?.results)) items = data.results;
-      else if (Array.isArray(data?.data)) items = data.data;
-      else if (Array.isArray(data?.data?.results)) items = data.data.results;
-      setComments(items);
+      setComments(parseThreadCommentsResponse(res.data));
     } catch {
       setComments([]);
       toast.error('Gagal memuat komentar.');
@@ -330,9 +330,6 @@ export default function CommunityPage() {
     fetchCommunities(0);
   }
 
-  const hasMore = offset + LIMIT < totalCount;
-  const hasPrev = offset > 0;
-
   const joinedCommunities = communities.filter(isJoinedCommunity);
   const exploreCommunities = communities.filter((c) => !isJoinedCommunity(c));
 
@@ -390,9 +387,7 @@ export default function CommunityPage() {
               onPost={handleFeedPost}
             />
             {feedLoading ? (
-              <div className='flex items-center justify-center py-16'>
-                <Loader2 className='size-8 animate-spin text-[#FF8000]' />
-              </div>
+              <ThreadFeedSkeleton count={3} />
             ) : feedThreads.length === 0 ? (
               <div className='rounded-3xl border border-dashed border-border/70 bg-white px-6 py-14 text-center'>
                 <MessageCircle className='mx-auto mb-3 size-10 text-[#FF8000]/35' />
@@ -420,10 +415,8 @@ export default function CommunityPage() {
               </div>
             )}
             {!feedLoading && feedThreads.length > 0 && feedThreads.length < feedTotal ? (
-              <div ref={loadMoreRef} className='flex items-center justify-center py-4'>
-                {feedLoadingMore ? (
-                  <Loader2 className='size-5 animate-spin text-[#FF8000]' />
-                ) : null}
+              <div ref={loadMoreRef}>
+                {feedLoadingMore ? <LoadMoreSkeleton /> : null}
               </div>
             ) : null}
           </div>
@@ -446,9 +439,7 @@ export default function CommunityPage() {
             </form>
 
             {loading ? (
-              <div className='flex items-center justify-center py-20'>
-                <Loader2 className='size-8 animate-spin text-[#FF8000]' />
-              </div>
+              <CommunityGridSkeleton count={6} />
             ) : communities.length === 0 ? (
               <div className='flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/70 bg-white px-6 py-16 text-center'>
                 <div className='rounded-2xl bg-[#FFF1E5] p-5'>
@@ -512,29 +503,15 @@ export default function CommunityPage() {
                   ) : null}
                 </section>
 
-                {hasPrev || hasMore ? (
-                  <div className='flex flex-wrap items-center justify-center gap-3 pt-2'>
-                    <Button
-                      variant='outline'
-                      disabled={!hasPrev}
-                      onClick={() => fetchCommunities(Math.max(0, offset - LIMIT))}
-                      className='rounded-full px-5'
-                    >
-                      Sebelumnya
-                    </Button>
-                    <span className='text-sm text-muted-foreground'>
-                      {offset + 1} sampai {Math.min(offset + LIMIT, totalCount)} dari {totalCount}
-                    </span>
-                    <Button
-                      variant='outline'
-                      disabled={!hasMore}
-                      onClick={() => fetchCommunities(offset + LIMIT)}
-                      className='rounded-full px-5'
-                    >
-                      Lanjut
-                    </Button>
-                  </div>
-                ) : null}
+                <OffsetPagination
+                  total={totalCount}
+                  limit={LIMIT}
+                  offset={offset}
+                  onOffsetChange={fetchCommunities}
+                  loading={loading}
+                  anchorId='community-circles'
+                  className='pt-2'
+                />
               </>
             )}
           </div>

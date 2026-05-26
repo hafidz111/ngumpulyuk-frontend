@@ -6,7 +6,6 @@ import { recommendationsApi } from '@/infrastructure/recommendations/recommendat
 const RECOMMENDATION_TIMEOUT_MS = 1500;
 
 /**
- * Rekomendasi personal untuk ditampilkan di welcome chat (thread kosong).
  * @param {boolean} enabled
  */
 export function useChatInitialRecommendations(enabled) {
@@ -28,7 +27,10 @@ export function useChatInitialRecommendations(enabled) {
         const res = await Promise.race([
           recommendationsApi.events({ limit: 6 }),
           new Promise((_, reject) => {
-            window.setTimeout(() => reject(new Error('timeout')), RECOMMENDATION_TIMEOUT_MS);
+            window.setTimeout(
+              () => reject(new Error('timeout')),
+              RECOMMENDATION_TIMEOUT_MS,
+            );
           }),
         ]);
         if (cancelled) return;

@@ -1,21 +1,14 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCheck, Loader2 } from 'lucide-react';
+import { CheckCheck } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
 import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/presentation/components/ui/pagination';
+import { OffsetPagination } from '@/presentation/components/offset-pagination';
+import { NotificationListSkeleton } from '@/presentation/components/skeletons';
 import {
   Card,
   CardDescription,
@@ -59,41 +52,6 @@ function formatNotificationType(type) {
     .join(' ');
 }
 
-/**
- * @param {number} currentPage 1-based
- * @param {number} totalPages
- * @returns {Array<{ type: 'page'; n: number } | { type: 'ellipsis'; key: string }>}
- */
-function getVisiblePageNumbers(currentPage, totalPages) {
-  const out = [];
-  if (totalPages < 1) return out;
-  if (totalPages === 1) {
-    out.push({ type: 'page', n: 1 });
-    return out;
-  }
-  if (totalPages <= 9) {
-    for (let i = 1; i <= totalPages; i++) {
-      out.push({ type: 'page', n: i });
-    }
-    return out;
-  }
-
-  out.push({ type: 'page', n: 1 });
-  const start = Math.max(2, currentPage - 2);
-  const end = Math.min(totalPages - 1, currentPage + 2);
-  if (start > 2) {
-    out.push({ type: 'ellipsis', key: 'start' });
-  }
-  for (let i = start; i <= end; i++) {
-    out.push({ type: 'page', n: i });
-  }
-  if (end < totalPages - 1) {
-    out.push({ type: 'ellipsis', key: 'end' });
-  }
-  out.push({ type: 'page', n: totalPages });
-  return out;
-}
-
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuth();
   const { onOpenMenu } = useChatPageShell();
@@ -111,30 +69,10 @@ export default function NotificationsPage() {
     pageLimit,
     offset,
     setOffset,
-    hasMore,
-    hasPrev,
     load,
     markOneRead,
     markAllRead,
   } = useNotificationsInbox(isAuthenticated);
-
-  const totalPages = Math.max(1, Math.ceil(total / pageLimit));
-  const currentPage = Math.min(
-    totalPages,
-    Math.floor(offset / pageLimit) + 1,
-  );
-  const visiblePages = useMemo(
-    () => getVisiblePageNumbers(currentPage, totalPages),
-    [currentPage, totalPages],
-  );
-
-  const goToPage = useCallback(
-    (page) => {
-      const p = Math.max(1, Math.min(totalPages, page));
-      setOffset((p - 1) * pageLimit);
-    },
-    [pageLimit, setOffset, totalPages],
-  );
 
   const handleOpen = useCallback(
     async (n) => {
@@ -213,11 +151,7 @@ export default function NotificationsPage() {
           </Select>
         </div>
 
-        {loading && items.length === 0 ? (
-          <div className='flex justify-center py-16'>
-            <Loader2 className='size-8 animate-spin text-muted-foreground' aria-hidden />
-          </div>
-        ) : null}
+        {loading && items.length === 0 ? <NotificationListSkeleton count={5} /> : null}
 
         {!loading && items.length === 0 ? (
           <Card className='rounded-3xl border-border/60 bg-white'>
@@ -269,60 +203,15 @@ export default function NotificationsPage() {
         </ul>
 
         {items.length > 0 ? (
-          <Pagination className='mt-8'>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href='#notifications'
-                  aria-disabled={!hasPrev || loading}
-                  className={cn(
-                    (!hasPrev || loading) && 'pointer-events-none opacity-50',
-                  )}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!hasPrev || loading) return;
-                    setOffset((o) => Math.max(0, o - pageLimit));
-                  }}
-                />
-              </PaginationItem>
-              {visiblePages.map((entry) =>
-                entry.type === 'ellipsis' ? (
-                  <PaginationItem key={`ellipsis-${entry.key}`}>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                ) : (
-                  <PaginationItem key={entry.n}>
-                    <PaginationLink
-                      href='#notifications'
-                      isActive={currentPage === entry.n}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (loading || currentPage === entry.n) return;
-                        goToPage(entry.n);
-                      }}
-                      className={cn(loading && 'pointer-events-none opacity-50')}
-                    >
-                      {entry.n}
-                    </PaginationLink>
-                  </PaginationItem>
-                ),
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  href='#notifications'
-                  aria-disabled={!hasMore || loading}
-                  className={cn(
-                    (!hasMore || loading) && 'pointer-events-none opacity-50',
-                  )}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!hasMore || loading) return;
-                    setOffset((o) => o + pageLimit);
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+          <OffsetPagination
+            total={total}
+            limit={pageLimit}
+            offset={offset}
+            onOffsetChange={setOffset}
+            loading={loading}
+            anchorId='notifications'
+            className='mt-8'
+          />
         ) : null}
         </div>
       </ChatFirstPageBody>

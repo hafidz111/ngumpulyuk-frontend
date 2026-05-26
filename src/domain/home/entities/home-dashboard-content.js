@@ -1,6 +1,4 @@
 /**
- * Konten halaman utama
- *
  * @typedef {Object} HomeRecommendedEvent
  * @property {string} id
  * @property {string} categoryLabel

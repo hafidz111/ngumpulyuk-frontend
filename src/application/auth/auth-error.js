@@ -1,19 +1,23 @@
 /** @type {Record<string, string>} */
 const AUTH_MESSAGE_ID = {
   'invalid credentials': 'Email atau kata sandi salah.',
-  'email is not verified': 'Email belum diverifikasi. Cek kotak masuk atau kirim ulang kode OTP.',
+  'email is not verified':
+    'Email belum diverifikasi. Cek kotak masuk atau kirim ulang kode OTP.',
   'email already verified': 'Email sudah terverifikasi.',
   'user not found': 'Akun tidak ditemukan.',
   'passcode not provided': 'Kode OTP tidak ditemukan atau sudah kedaluwarsa.',
-  'reset link is invalid or has expired': 'Link reset kata sandi tidak valid atau sudah kedaluwarsa.',
+  'reset link is invalid or has expired':
+    'Link reset kata sandi tidak valid atau sudah kedaluwarsa.',
   'link is invalid or has expired': 'Link tidak valid atau sudah kedaluwarsa.',
   'passwords do not match': 'Konfirmasi kata sandi tidak cocok.',
-  'token is invalid or has expired': 'Sesi tidak valid atau sudah berakhir. Silakan masuk lagi.',
+  'token is invalid or has expired':
+    'Sesi tidak valid atau sudah berakhir. Silakan masuk lagi.',
   'credentials is valid': 'Sesi masih aktif.',
   'could not verify user': 'Gagal verifikasi akun Google. Coba lagi.',
   'validation error': 'Data tidak valid. Periksa isian kamu.',
   'network error': 'Koneksi bermasalah. Periksa internet lalu coba lagi.',
-  'no active account found with the given credentials': 'Email atau kata sandi salah.',
+  'no active account found with the given credentials':
+    'Email atau kata sandi salah.',
 };
 
 /** @type {Record<string, string>} */
@@ -36,7 +40,10 @@ export function translateAuthMessage(message) {
   const lower = raw.toLowerCase();
   if (AUTH_MESSAGE_ID[lower]) return AUTH_MESSAGE_ID[lower];
 
-  if (lower.includes('invalid credentials') || lower.includes('no active account')) {
+  if (
+    lower.includes('invalid credentials') ||
+    lower.includes('no active account')
+  ) {
     return AUTH_MESSAGE_ID['invalid credentials'];
   }
   if (lower.includes('not verified')) {
@@ -84,7 +91,8 @@ function extractMessageFromData(data) {
     }
   }
 
-  if (typeof d.message === 'string' && d.message.trim()) return d.message.trim();
+  if (typeof d.message === 'string' && d.message.trim())
+    return d.message.trim();
 
   for (const value of Object.values(d)) {
     if (typeof value === 'string' && value.trim()) return value.trim();

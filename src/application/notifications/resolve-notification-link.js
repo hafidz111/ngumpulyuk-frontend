@@ -1,8 +1,6 @@
 import { ROUTES } from '@/shared/config/routes';
 
 /**
- * Maps stored notification link_url values to in-app router paths.
- *
  * @param {string | null | undefined} linkUrl
  * @returns {string | null}
  */

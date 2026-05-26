@@ -1,9 +1,5 @@
 import { apiClient } from '@/infrastructure/http/api-client';
 
-/**
- * Ngumpsky — AI assistant chat.
- * Base URL: VITE_API_BASE_URL (e.g. http://host/api) → /v1/chat/
- */
 export const chatApi = {
   /**
    * @param {{ message: string; session_id?: string }} body

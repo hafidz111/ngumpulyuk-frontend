@@ -1,9 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Send, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Send, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/presentation/components/ui/button';
+import {
+  ButtonBusySkeleton,
+  ChatMessageSkeleton,
+  ChatRecoSkeleton,
+} from '@/presentation/components/skeletons';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { getFollowUpSuggestions } from '@/application/chat/get-follow-up-suggestions';
 import { CHAT_WELCOME_CHIPS } from '@/presentation/chat/chat-sidebar-actions';
@@ -124,6 +129,7 @@ export function ChatConversation({
 
   const greetingName = displayName?.trim() || 'kamu';
   const showWelcome = messages.length === 0;
+  const [welcomeTimestamp] = useState(() => Date.now());
   const { cards: initialRecoCards, loading: initialRecoLoading } =
     useChatInitialRecommendations(showWelcome);
   const lastMessage = messages[messages.length - 1];
@@ -160,14 +166,11 @@ export function ChatConversation({
                     : SHELL_COPY.chat.welcomeNoReco(greetingName)}
                 </p>
                 <p className='mt-2 text-xs text-muted-foreground'>
-                  {formatMessageTime(Date.now())}
+                  {formatMessageTime(welcomeTimestamp)}
                 </p>
               </div>
               {initialRecoLoading ? (
-                <div className='mt-3 flex items-center gap-2 text-xs text-muted-foreground'>
-                  <Loader2 className='size-4 animate-spin text-[#FF8000]' aria-hidden />
-                  {SHELL_COPY.chat.recoLoading}
-                </div>
+                <ChatRecoSkeleton className='mt-3' />
               ) : null}
               {initialRecoCards.length > 0 ? (
                 <ChatAssistantCards cards={initialRecoCards} />
@@ -201,11 +204,7 @@ export function ChatConversation({
                   <div className='max-w-[min(92%,36rem)] flex-1 space-y-1'>
                     <div className='rounded-2xl rounded-tl-md border border-border/50 bg-white px-4 py-3 text-sm shadow-sm'>
                       {m.pending ? (
-                        <div className='space-y-2' aria-busy='true'>
-                          <div className='h-3 max-w-[85%] animate-pulse rounded bg-muted' />
-                          <div className='h-3 w-full max-w-full animate-pulse rounded bg-muted' />
-                          <div className='h-3 max-w-[70%] animate-pulse rounded bg-muted' />
-                        </div>
+                        <ChatMessageSkeleton aria-busy='true' />
                       ) : m.error ? (
                         <div className='space-y-2'>
                           <p className='text-destructive'>{m.error}</p>
@@ -307,7 +306,7 @@ export function ChatConversation({
             onClick={() => void sendMessage()}
           >
             {loading ? (
-              <Loader2 className='size-5 animate-spin' aria-hidden />
+              <ButtonBusySkeleton className='size-5' />
             ) : (
               <Send className='size-5' aria-hidden />
             )}

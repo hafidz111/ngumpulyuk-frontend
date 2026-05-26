@@ -1,6 +1,7 @@
 import { Calendar, MapPin, Sparkles, Users } from 'lucide-react';
 
 import { MotionDiv } from '../../lib/motion-primitives';
+import { LandingAnimatedStatValue } from './landing-animated-stat-value';
 
 const iconMap = {
   users: Users,
@@ -9,7 +10,13 @@ const iconMap = {
   sparkles: Sparkles,
 };
 
-export function LandingStatsSection({ stats }) {
+/**
+ * @param {{
+ *   stats: Array<{ icon: string; count: number; label: string }>;
+ *   isRefreshing?: boolean;
+ * }} props
+ */
+export function LandingStatsSection({ stats, isRefreshing = false }) {
   return (
     <section className='border-y border-transparent bg-surface-low/80 py-12 md:py-16'>
       <div className='mx-auto grid max-w-7xl grid-cols-2 gap-10 px-6 md:grid-cols-4 md:gap-12 md:px-8'>
@@ -27,7 +34,13 @@ export function LandingStatsSection({ stats }) {
               <div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary'>
                 <Icon className='h-6 w-6' aria-hidden />
               </div>
-              <p className='font-display text-2xl font-extrabold text-foreground md:text-3xl'>{item.value}</p>
+              <p className='font-display text-2xl font-extrabold text-foreground md:text-3xl'>
+                <LandingAnimatedStatValue
+                  count={item.count}
+                  isRefreshing={isRefreshing}
+                  staggerIndex={index}
+                />
+              </p>
               <p className='mt-1 text-sm text-muted-foreground'>{item.label}</p>
             </MotionDiv>
           );

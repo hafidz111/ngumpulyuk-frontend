@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Send, Sparkles, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { Send, Sparkles, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 
 import { Button } from '@/presentation/components/ui/button';
+import { ButtonBusySkeleton, ChatMessageSkeleton } from '@/presentation/components/skeletons';
 import {
   Popover,
   PopoverContent,
@@ -48,15 +49,16 @@ export function FloatingChatWidget({ enabled }) {
     clearThread,
   } = useNgumpskyChat(Boolean(enabled));
 
+  const panelOpen = enabled && open;
+
   useEffect(() => {
-    if (!open) return;
+    if (!panelOpen) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading, open]);
+  }, [messages, loading, panelOpen]);
 
   useEffect(() => {
     if (enabled) return;
     clearThread();
-    setOpen(false);
   }, [clearThread, enabled]);
 
   function handleKeyDown(e) {
@@ -71,12 +73,13 @@ export function FloatingChatWidget({ enabled }) {
   const canSend = input.trim().length > 0 && !loading;
 
   function handleOpenChange(nextOpen) {
+    if (!enabled) return;
     setOpen(nextOpen);
   }
 
   return (
     <div className='fixed bottom-5 right-3 z-50 md:bottom-6 md:right-6'>
-      <Popover open={open} onOpenChange={handleOpenChange}>
+      <Popover open={panelOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <button
             type='button'
@@ -168,11 +171,7 @@ export function FloatingChatWidget({ enabled }) {
                       <div className='space-y-1'>
                         <div className='max-w-[95%] rounded-2xl rounded-bl-md border border-border/70 bg-[#F5F5F7] px-3.5 py-2.5 text-sm shadow-sm'>
                           {m.pending ? (
-                            <div className='space-y-2' aria-busy='true'>
-                              <div className='h-3 max-w-[85%] animate-pulse rounded bg-muted' />
-                              <div className='h-3 w-full max-w-full animate-pulse rounded bg-muted' />
-                              <div className='h-3 max-w-[70%] animate-pulse rounded bg-muted' />
-                            </div>
+                            <ChatMessageSkeleton aria-busy='true' />
                           ) : m.error ? (
                             <div className='space-y-2'>
                               <p className='text-destructive'>{m.error}</p>
@@ -270,7 +269,7 @@ export function FloatingChatWidget({ enabled }) {
                   onClick={() => void sendMessage()}
                 >
                   {loading ? (
-                    <Loader2 className='size-5 animate-spin' aria-hidden />
+                    <ButtonBusySkeleton className='size-5' />
                   ) : (
                     <Send className='size-5' aria-hidden />
                   )}

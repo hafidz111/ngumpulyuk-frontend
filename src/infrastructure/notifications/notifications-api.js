@@ -1,20 +1,16 @@
 import { apiClient } from '@/infrastructure/http/api-client';
 import { buildNotificationBlastBody } from '@/application/notifications/build-notification-blast-body';
 
-/**
- * In-app notifications + device tokens (FCM).
- * Auth: Bearer access token (api-client); refresh via POST /v1/auth/refresh/ on 401.
- */
 export const notificationsApi = {
   /**
-   * @param {Record<string, string | number | boolean | undefined>} [params] is_read, type, limit, offset
+   * @param {Record<string, string | number | boolean | undefined>} [params]
    */
   list(params) {
     return apiClient.get('/v1/notifications/', { params });
   },
 
   /**
-   * @param {string} id Notification UUID
+   * @param {string} id
    */
   markRead(id) {
     return apiClient.put(`/v1/notifications/${id}/read/`);
@@ -39,11 +35,6 @@ export const notificationsApi = {
   },
 
   /**
-   * Admin/staff-only endpoint.
-   * - Specific users: { title, message, link_url?, user_ids: string[] }
-   * - By interests: { title, message, link_url?, interests: string[] }
-   * - All active users: { title, message, link_url?, all_users: true, confirm: 'BLAST_ALL_USERS' }
-   *
    * @param {{
    *   title: string;
    *   message: string;
@@ -55,6 +46,9 @@ export const notificationsApi = {
    * }} payload
    */
   blast(payload) {
-    return apiClient.post('/v1/notifications/blast/', buildNotificationBlastBody(payload));
+    return apiClient.post(
+      '/v1/notifications/blast/',
+      buildNotificationBlastBody(payload),
+    );
   },
 };

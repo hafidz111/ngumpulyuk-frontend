@@ -1,24 +1,22 @@
 import { Navigate } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
 
-import { getLandingContent } from '../../application/landing/use-cases/get-landing-content';
-import { InMemoryLandingContentRepository } from '../../infrastructure/landing/repositories/in-memory-landing-content-repository';
 import { ROUTES } from '../../shared/config/routes';
 import { useAuth } from '../auth/hooks/use-auth';
 import { LandingAiMatcherSection } from './components/landing-ai-matcher-section';
+import { LandingCommunitiesSection } from './components/landing-communities-section';
 import { LandingFinalCtaSection } from './components/landing-final-cta-section';
 import { LandingFooter } from './components/landing-footer';
 import { LandingHeader } from './components/landing-header';
 import { LandingHeroSection } from './components/landing-hero-section';
 import { LandingHowItWorksSection } from './components/landing-how-it-works-section';
 import { LandingStatsSection } from './components/landing-stats-section';
-import { LandingTestimonialsSection } from './components/landing-testimonials-section';
 import { LandingTrendingActivitiesSection } from './components/landing-trending-activities-section';
-
-const repository = new InMemoryLandingContentRepository();
-const content = getLandingContent(repository);
+import { useLandingContent } from './hooks/use-landing-content';
 
 function LandingPage() {
   const { isAuthenticated, user } = useAuth();
+  const { content, isRefreshing, error } = useLandingContent();
 
   if (isAuthenticated) {
     if (!user?.isOnboarded) {
@@ -31,16 +29,28 @@ function LandingPage() {
     <div className='bg-surface text-foreground'>
       <LandingHeader brand={content.brand} navigation={content.navigation} />
 
+      {error ? (
+        <div className='border-b border-destructive/20 bg-destructive/5 px-6 py-3'>
+          <p className='mx-auto flex max-w-7xl items-center gap-2 text-sm text-destructive'>
+            <AlertCircle className='size-4 shrink-0' aria-hidden />
+            {error}. Angka dan event di bawah mungkin belum terbaru.
+          </p>
+        </div>
+      ) : null}
+
       <main>
-        <LandingHeroSection hero={content.hero} />
-        <LandingStatsSection stats={content.stats} />
-        <LandingTrendingActivitiesSection trending={content.trending} />
-        <LandingHowItWorksSection steps={content.steps} />
+        <LandingHeroSection hero={content.hero} isRefreshing={isRefreshing} />
+        <LandingStatsSection stats={content.stats} isRefreshing={isRefreshing} />
         <LandingAiMatcherSection aiMatcher={content.aiMatcher} />
-        <LandingTestimonialsSection
-          heading={content.testimonialsHeading}
-          testimonials={content.testimonials}
+        <LandingTrendingActivitiesSection
+          trending={content.trending}
+          isRefreshing={isRefreshing}
         />
+        <LandingCommunitiesSection
+          communities={content.communities}
+          isRefreshing={isRefreshing}
+        />
+        <LandingHowItWorksSection steps={content.steps} />
         <LandingFinalCtaSection finalCta={content.finalCta} />
       </main>
 

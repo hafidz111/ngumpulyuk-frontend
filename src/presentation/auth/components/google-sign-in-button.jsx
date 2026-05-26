@@ -42,7 +42,7 @@ export function GoogleSignInButton({
         el.innerHTML = '';
         renderGoogleSignInButton(el, clientId, { text });
       } catch {
-        /* error ditampilkan lewat hook auth */
+        /* error */
       }
     })();
 
@@ -65,7 +65,7 @@ export function GoogleSignInButton({
   return (
     <div
       ref={containerRef}
-      className='flex min-h-[44px] w-full max-w-md justify-center [&_.gsi-material-button]:mx-auto'
+      className='flex min-h-[40px] w-full justify-center [&_.gsi-material-button]:mx-auto'
     />
   );
 }

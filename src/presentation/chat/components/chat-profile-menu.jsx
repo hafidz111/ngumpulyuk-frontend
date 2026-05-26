@@ -66,7 +66,7 @@ export function ChatProfileMenu({ variant = 'sidebar', onNavigate }) {
         >
           <Avatar
             className={cn(
-              'border-2 border-white shadow-sm',
+              'border-0 shadow-none',
               isTab ? 'size-8' : 'size-9',
             )}
           >

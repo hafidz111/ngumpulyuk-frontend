@@ -2,6 +2,7 @@ import { Search, UserPlus, Users } from 'lucide-react';
 
 import { MotionDiv } from '../../lib/motion-primitives';
 import { Card, CardContent } from '../../components/ui/card';
+import { LandingFullSection, LandingFullSectionInner } from './landing-full-section';
 
 const iconMap = {
   search: Search,
@@ -11,8 +12,8 @@ const iconMap = {
 
 export function LandingHowItWorksSection({ steps }) {
   return (
-    <section id='fitur' className='bg-surface-low py-20 md:py-28'>
-      <div className='mx-auto max-w-7xl px-6 md:px-8'>
+    <LandingFullSection id='cara-kerja' variant='surface-low'>
+      <LandingFullSectionInner>
         <div className='mb-12 text-center md:mb-16'>
           <h2 className='font-display text-3xl font-extrabold text-foreground md:text-4xl'>Cara Kerjanya</h2>
           <p className='mt-3 max-w-xl mx-auto text-muted-foreground'>
@@ -43,7 +44,7 @@ export function LandingHowItWorksSection({ steps }) {
             );
           })}
         </div>
-      </div>
-    </section>
+      </LandingFullSectionInner>
+    </LandingFullSection>
   );
 }

@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
-import { ImagePlus, Loader2, X } from 'lucide-react';
+import { ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
 import { RequiredMark } from '@/presentation/components/required-mark';
 import { Button } from '@/presentation/components/ui/button';
+import { ButtonBusySkeleton } from '@/presentation/components/skeletons';
 import { Label } from '@/presentation/components/ui/label';
 import { ThemedInput, ThemedTextarea } from '@/presentation/components/themed-form-field';
 import {
@@ -172,7 +173,7 @@ export function CommunityForm({ onSubmit, onCancel, submitLabel = 'Buat Communit
           disabled={submitting}
           className='h-12 flex-1 rounded-xl bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
         >
-          {submitting ? <Loader2 className='size-4 animate-spin' /> : null}
+          {submitting ? <ButtonBusySkeleton /> : null}
           {submitLabel}
         </Button>
       </div>

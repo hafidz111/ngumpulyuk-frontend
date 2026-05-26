@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /syarat-ketentuan
+Allow: /kebijakan-privasi
+
+Disallow: /chat
+Disallow: /events
+Disallow: /community
+Disallow: /profile
+Disallow: /notifications
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /onboarding
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /password-reset-confirm
+
+Sitemap: https://ngumpulyuk.com/sitemap.xml

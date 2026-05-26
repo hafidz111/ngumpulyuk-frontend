@@ -31,6 +31,10 @@ export const APP_SHELL_SEARCH_ICON_CLASS = 'text-muted-foreground';
 export const APP_SHELL_SECONDARY_BUTTON_CLASS =
   'rounded-full border-2 border-[#FF8000] bg-[#FFF1E5] font-semibold text-[#FF8000] shadow-sm hover:border-[#E67300] hover:bg-[#FFE0C2] hover:text-[#E67300]';
 
+/** Input halaman auth (login, daftar, OTP) — putih, border netral. */
+export const AUTH_FORM_INPUT_CLASS =
+  'border border-border/60 bg-white text-foreground shadow-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-[#FF8000]/50 focus-visible:ring-2 focus-visible:ring-[#FF8000]/15 disabled:cursor-not-allowed disabled:opacity-50';
+
 /** Field form — background putih, border netral. */
 export const APP_SHELL_FORM_INPUT_CLASS =
   'h-12 w-full min-w-0 rounded-xl border border-border/60 bg-white px-4 text-sm text-foreground shadow-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus:border-[#FF8000]/50 focus:ring-2 focus:ring-[#FF8000]/15 disabled:cursor-not-allowed disabled:opacity-50';

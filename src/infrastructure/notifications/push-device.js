@@ -14,8 +14,6 @@ export function setStoredPushDeviceToken(token) {
 }
 
 /**
- * Call after obtaining an FCM registration token (Firebase Web/Android/iOS SDK).
- *
  * @param {string} token
  * @param {'android' | 'ios' | 'web'} [platform]
  */
@@ -25,7 +23,7 @@ export async function registerPushDeviceToken(token, platform = 'web') {
 }
 
 /**
- * DELETE on backend then clear local token. Safe to call on logout.
+ * @param {string} token
  */
 export async function unregisterPushDeviceIfAny() {
   const token = getStoredPushDeviceToken();
@@ -33,7 +31,7 @@ export async function unregisterPushDeviceIfAny() {
   try {
     await notificationsApi.unregisterDevice({ token });
   } catch {
-    /* still clear local token */
+    // still clear local token
   } finally {
     setStoredPushDeviceToken(null);
   }

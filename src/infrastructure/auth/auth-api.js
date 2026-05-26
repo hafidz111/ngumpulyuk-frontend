@@ -37,7 +37,6 @@ export const authApi = {
   },
 
   /**
-   * Blacklist refresh token di server (kirim Bearer access jika ada).
    * @param {{ refresh_token: string }} body
    */
   logout(body) {

@@ -50,7 +50,8 @@ export function ChatSidebar({
           {SHELL_COPY.sidebar.quickSection}
         </p>
         <ul className='space-y-1'>
-          {CHAT_SIDEBAR_ACTIONS.map(({ label, icon: Icon, prompt, to, iconClassName }) => {
+          {CHAT_SIDEBAR_ACTIONS.map(({ label, icon, prompt, to, iconClassName }) => {
+            const ActionIcon = icon;
             const content = (
               <>
                 <span
@@ -59,7 +60,7 @@ export function ChatSidebar({
                     iconClassName,
                   )}
                 >
-                  <Icon className='size-4' aria-hidden />
+                  <ActionIcon className='size-4' aria-hidden />
                 </span>
                 <span className='font-semibold text-foreground'>{label}</span>
               </>
@@ -102,7 +103,9 @@ export function ChatSidebar({
           {SHELL_COPY.sidebar.navSection}
         </p>
         <ul className='space-y-0.5'>
-          {APP_NAV_ITEMS.map(({ to, label, end, icon: Icon }) => (
+          {APP_NAV_ITEMS.map(({ to, label, end, icon }) => {
+            const NavIcon = icon;
+            return (
             <li key={to}>
               <NavLink
                 to={to}
@@ -117,11 +120,12 @@ export function ChatSidebar({
                   )
                 }
               >
-                <Icon className='size-4 shrink-0' aria-hidden />
+                <NavIcon className='size-4 shrink-0' aria-hidden />
                 {label}
               </NavLink>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </div>
 

@@ -66,37 +66,43 @@ function PaginationLink({
 
 function PaginationPrevious({
   className,
+  compact = false,
   ...props
 }) {
   return (
     <PaginationLink
       aria-label="Halaman sebelumnya"
-      size="default"
+      size={compact ? "icon" : "default"}
       className={cn(
-        "h-9 gap-1 px-2.5 pl-2.5 font-normal text-muted-foreground hover:text-foreground",
+        compact
+          ? "size-9 font-normal text-muted-foreground hover:text-foreground"
+          : "h-9 gap-1 px-2.5 pl-2.5 font-normal text-muted-foreground hover:text-foreground",
         className,
       )}
       {...props}>
       <ChevronLeftIcon className="size-4" />
-      <span>Sebelumnya</span>
+      {compact ? null : <span>Sebelumnya</span>}
     </PaginationLink>
   );
 }
 
 function PaginationNext({
   className,
+  compact = false,
   ...props
 }) {
   return (
     <PaginationLink
       aria-label="Halaman berikutnya"
-      size="default"
+      size={compact ? "icon" : "default"}
       className={cn(
-        "h-9 gap-1 px-2.5 pr-2.5 font-normal text-muted-foreground hover:text-foreground",
+        compact
+          ? "size-9 font-normal text-muted-foreground hover:text-foreground"
+          : "h-9 gap-1 px-2.5 pr-2.5 font-normal text-muted-foreground hover:text-foreground",
         className,
       )}
       {...props}>
-      <span>Berikutnya</span>
+      {compact ? null : <span>Berikutnya</span>}
       <ChevronRightIcon className="size-4" />
     </PaginationLink>
   );

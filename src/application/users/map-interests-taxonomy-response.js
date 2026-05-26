@@ -1,6 +1,4 @@
 /**
- * Interest taxonomy: GET /api/v1/users/interests/
- *
  * @param {unknown} raw Axios response.data or nested .data
  * @returns {{
  *   rows: Array<{ interest: string; count: number | null }>;

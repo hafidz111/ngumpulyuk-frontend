@@ -1,9 +1,6 @@
 import { toTitleCase } from '@/shared/lib/text-format';
 
 /**
- * Blast targeting should use the same human-readable interest strings as onboarding
- * (e.g. "Board Games"), while GET /users/interests/ may return snake_case slugs.
- *
  * @param {unknown} raw
  * @returns {string}
  */

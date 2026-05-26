@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Heart, Loader2, MessageCircle } from 'lucide-react';
+import { Heart, MessageCircle } from 'lucide-react';
 
 import { Dialog, DialogContent } from '@/presentation/components/ui/dialog';
 import { Button } from '@/presentation/components/ui/button';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { Avatar, AvatarImage } from '@/presentation/components/ui/avatar';
+import {
+  ButtonBusySkeleton,
+  ListRowsSkeleton,
+} from '@/presentation/components/skeletons';
 
 function formatCommentTime(value) {
   if (!value) return '';
@@ -54,9 +58,7 @@ export function ThreadCommentsDialog({
 
           <div className='max-h-[45vh] space-y-3 overflow-y-auto pr-1'>
             {loading ? (
-              <div className='flex justify-center py-8'>
-                <Loader2 className='size-5 animate-spin text-primary-container' />
-              </div>
+              <ListRowsSkeleton rows={4} />
             ) : comments.length === 0 ? (
               <div className='rounded-xl border border-border/70 bg-card p-6 text-center text-sm text-muted-foreground'>
                 <MessageCircle className='mx-auto mb-2 size-5 opacity-40' />
@@ -123,7 +125,7 @@ export function ThreadCommentsDialog({
                 disabled={!draft.trim() || submitting}
                 className='rounded-full px-5'
               >
-                {submitting ? <Loader2 className='size-4 animate-spin' /> : null}
+                {submitting ? <ButtonBusySkeleton /> : null}
                 Kirim Komentar
               </Button>
             </div>

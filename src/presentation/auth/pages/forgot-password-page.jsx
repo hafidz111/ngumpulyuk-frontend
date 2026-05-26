@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { AUTH_FORM_INPUT_CLASS } from '@/presentation/layout/app-shell-chrome';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
 import { Button } from '@/presentation/components/ui/button';
@@ -94,7 +96,10 @@ export default function ForgotPasswordPage() {
                   autoComplete='email'
                   required
                   placeholder='email@contoh.com'
-                  className='h-12 rounded-full border-border bg-background pl-11 pr-4 text-sm shadow-none'
+                  className={cn(
+                    AUTH_FORM_INPUT_CLASS,
+                    'h-12 rounded-full pl-11 pr-4 text-sm',
+                  )}
                 />
               </div>
             </div>

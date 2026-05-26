@@ -27,19 +27,27 @@ export function ChatFirstMobileNav() {
       className='flex shrink-0 items-stretch justify-around gap-0.5 border-t border-border/60 bg-white px-1 py-1.5 lg:hidden'
       aria-label='Navigasi utama'
     >
-      {APP_NAV_ITEMS.map(({ to, label, end, icon: Icon }) => (
+      {APP_NAV_ITEMS.map(({ to, label, end, icon }) => {
+        const NavIcon = icon;
+        return (
         <NavLink key={to} to={to} end={end} className={navTabClass}>
           <span className={ICON_SLOT}>
-            <Icon className='size-4' aria-hidden />
+            <NavIcon className='size-4' aria-hidden />
           </span>
           <span className='max-w-full truncate px-0.5'>{label}</span>
         </NavLink>
-      ))}
+        );
+      })}
       <NavLink to={ROUTES.profile} className={navTabClass}>
         {({ isActive }) => (
           <>
             <span className={ICON_SLOT}>
-              <Avatar className={cn('size-4', isActive && 'ring-1 ring-white')}>
+              <Avatar
+                className={cn(
+                  'size-4 border-0',
+                  isActive && 'ring-1 ring-white/90',
+                )}
+              >
                 <AvatarFallback
                   className={cn(
                     userAvatarColorClass(identity),

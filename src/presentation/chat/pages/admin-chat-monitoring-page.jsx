@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, WandSparkles } from 'lucide-react';
+import { WandSparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { chatApi } from '@/infrastructure/chat/chat-api';
@@ -10,6 +10,11 @@ import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
 import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
 import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Button } from '@/presentation/components/ui/button';
+import { OffsetPagination } from '@/presentation/components/offset-pagination';
+import {
+  AdminLogListSkeleton,
+  ButtonBusySkeleton,
+} from '@/presentation/components/skeletons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -99,8 +104,6 @@ export default function AdminChatMonitoringPage() {
       active = false;
     };
   }, [helpful, intent, offset, reloadTick, searchDebounced]);
-
-  const hasPrev = offset > 0;
 
   function buildLogParams() {
     const params = {};
@@ -301,11 +304,7 @@ export default function AdminChatMonitoringPage() {
             <CardTitle className='text-base'>Chat Logs ({titleInfo})</CardTitle>
           </CardHeader>
           <CardContent className='space-y-3'>
-            {loading ? (
-              <div className='flex justify-center py-8'>
-                <Loader2 className='size-6 animate-spin text-muted-foreground' />
-              </div>
-            ) : null}
+            {loading ? <AdminLogListSkeleton count={4} /> : null}
             {!loading && rows.length === 0 ? (
               <p className='text-sm text-muted-foreground'>Belum ada data chat log.</p>
             ) : null}
@@ -398,7 +397,7 @@ export default function AdminChatMonitoringPage() {
                     </div>
                     <div className='flex gap-2'>
                       <Button size='sm' className='rounded-full' disabled={creating} onClick={() => void submitCorrection()}>
-                        {creating ? <Loader2 className='size-4 animate-spin' /> : 'Simpan Koreksi'}
+                        {creating ? <ButtonBusySkeleton /> : 'Simpan Koreksi'}
                       </Button>
                       <Button size='sm' variant='ghost' onClick={() => setPrefill(null)}>Batal</Button>
                     </div>
@@ -407,24 +406,15 @@ export default function AdminChatMonitoringPage() {
               </div>
             ))}
 
-            <div className='flex items-center justify-between pt-2'>
-              <Button
-                variant='outline'
-                className='rounded-full'
-                disabled={!hasPrev || loading}
-                onClick={() => setOffset((o) => Math.max(0, o - LIMIT))}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant='outline'
-                className='rounded-full'
-                disabled={!pagination.hasMore || loading}
-                onClick={() => setOffset((o) => o + LIMIT)}
-              >
-                Berikutnya
-              </Button>
-            </div>
+            <OffsetPagination
+              total={pagination.total}
+              limit={LIMIT}
+              offset={offset}
+              onOffsetChange={setOffset}
+              loading={loading}
+              anchorId='admin-chat-monitoring'
+              className='pt-2'
+            />
           </CardContent>
         </Card>
           </>

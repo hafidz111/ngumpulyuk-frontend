@@ -10,10 +10,7 @@ import {
 import L from 'leaflet';
 import {
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   Filter,
-  Loader2,
   MapPin,
   Navigation,
   Users,
@@ -25,7 +22,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/shared/config/routes';
 import { SHELL_COPY } from '@/shared/copy/shell-copy';
-import { eventsApi } from '@/infrastructure/events/events-api';
 import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
 import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Button } from '@/presentation/components/ui/button';
@@ -42,12 +38,18 @@ import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
 } from '@/presentation/events/event-data';
-import { parseEventsListResponse } from '@/presentation/events/lib/parse-events-list-response';
-import { formatEventDateRange, formatTimeId, formatLocation } from '@/shared/lib/formatters';
+import { fetchAllMapEvents } from '@/presentation/events/lib/fetch-all-map-events';
+import { InlineTextSkeleton } from '@/presentation/components/skeletons';
+import {
+  formatEventDateRange,
+  formatTimeId,
+  formatLocation,
+} from '@/shared/lib/formatters';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconRetinaUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
@@ -64,7 +66,10 @@ function makeIcon(color, isSelected = false, title = '') {
   const innerSize = isSelected ? 56 : 36;
   const iconSize = isSelected ? 24 : 16;
 
-  const safeTitle = String(title).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const safeTitle = String(title)
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 
   const html = `
     <div class="group relative flex h-full w-full cursor-pointer items-center justify-center">
@@ -107,8 +112,8 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLng / 2) ** 2;
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -147,8 +152,6 @@ function SyncMapState({ selectedEvent, setPopupPixel, onClose }) {
   return null;
 }
 
-const PAGE_SIZE = 10;
-
 function geolocationErrorMessage(error) {
   const locationSettingsHint =
     'Cek izin lokasi browser dan Location Services di perangkat kamu, lalu coba lagi.';
@@ -170,13 +173,11 @@ function geolocationErrorMessage(error) {
 }
 
 export default function EventMapPage() {
-  const { onOpenMenu } = useChatPageShell();
+  const { onOpenMenu, sidebarOpen } = useChatPageShell();
   const navigate = useNavigate();
 
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const geocodedIdsRef = useRef(new Set());
 
   const [userPos, setUserPos] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -188,20 +189,20 @@ export default function EventMapPage() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [popupPixel, setPopupPixel] = useState(null); // { x, y }
 
-  const [page, setPage] = useState(0);
-
   const mapRef = useRef(null);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await eventsApi.list({
-        limit: 200,
-        offset: 0,
-        status: 'upcoming',
+      const [upcoming, ongoing] = await Promise.all([
+        fetchAllMapEvents('upcoming'),
+        fetchAllMapEvents('ongoing'),
+      ]);
+      const byId = new Map();
+      [...upcoming, ...ongoing].forEach((ev) => {
+        if (ev?.id) byId.set(String(ev.id), ev);
       });
-      const { events } = parseEventsListResponse(res.data);
-      setAllEvents(events);
+      setAllEvents([...byId.values()]);
     } catch {
       setAllEvents([]);
     } finally {
@@ -212,52 +213,6 @@ export default function EventMapPage() {
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
-
-  useEffect(() => {
-    const toGeocode = allEvents.filter(
-      (e) => (!e.latitude || !e.longitude) && !geocodedIdsRef.current.has(e.id),
-    );
-    if (toGeocode.length === 0) return;
-
-    let cancelled = false;
-
-    async function run() {
-      setIsGeocoding(true);
-      for (const ev of toGeocode) {
-        if (cancelled) break;
-        geocodedIdsRef.current.add(ev.id);
-
-        const area = ev.location_area?.replace(/-/g, ' ') ?? '';
-        const query = [ev.location_address, area, 'Indonesia']
-          .filter(Boolean)
-          .join(', ');
-        if (!query.trim()) continue;
-
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-          );
-          const results = await response.json();
-          if (results?.[0]) {
-            const { lat, lon } = results[0];
-            setAllEvents((prev) =>
-              prev.map((e) =>
-                e.id === ev.id ? { ...e, latitude: lat, longitude: lon } : e,
-              ),
-            );
-          }
-        } catch {
-          // ignore; event just won't have a marker
-        }
-
-        if (!cancelled) await new Promise((r) => setTimeout(r, 1100));
-      }
-      if (!cancelled) setIsGeocoding(false);
-    }
-
-    run();
-    return () => { cancelled = true; };
-  }, [allEvents]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -278,32 +233,38 @@ export default function EventMapPage() {
       list = list.filter(
         (e) =>
           e.title?.toLowerCase().includes(q) ||
-          e.description?.toLowerCase().includes(q) ||
-          e.location_address?.toLowerCase().includes(q),
+          e.location_address?.toLowerCase().includes(q) ||
+          e.location_area?.toLowerCase().includes(q) ||
+          e.category?.toLowerCase().includes(q),
       );
     }
     if (category && category.trim()) {
       const selected = category.trim().toLowerCase();
-      list = list.filter((e) => e.category && e.category.toLowerCase() === selected);
+      list = list.filter(
+        (e) => e.category && e.category.toLowerCase() === selected,
+      );
     }
     const [refLat, refLng] = userPos || DEFAULT_MAP_CENTER;
     list = [...list].sort((a, b) => {
-      const dA = haversineKm(refLat, refLng, parseFloat(a.latitude), parseFloat(a.longitude));
-      const dB = haversineKm(refLat, refLng, parseFloat(b.latitude), parseFloat(b.longitude));
+      const dA = haversineKm(
+        refLat,
+        refLng,
+        parseFloat(a.latitude),
+        parseFloat(a.longitude),
+      );
+      const dB = haversineKm(
+        refLat,
+        refLng,
+        parseFloat(b.latitude),
+        parseFloat(b.longitude),
+      );
       return dA - dB;
     });
 
     return list;
   }, [allEvents, search, category, userPos]);
 
-  const totalPages = Math.ceil(filteredEvents.length / PAGE_SIZE);
-  const pageEvents = useMemo(
-    () => filteredEvents.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
-    [filteredEvents, page],
-  );
-
   useEffect(() => {
-    setPage(0);
     setSelectedEvent(null);
     setPopupPixel(null);
   }, [search, category, userPos]);
@@ -348,7 +309,7 @@ export default function EventMapPage() {
     () =>
       new L.Icon({
         iconUrl:
-          "data:image/svg+xml;base64," +
+          'data:image/svg+xml;base64,' +
           btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28">
           <circle cx="12" cy="12" r="10" fill="#3b82f6" stroke="white" stroke-width="2.5" opacity="0.9"/>
           <circle cx="12" cy="12" r="4" fill="white"/>
@@ -367,7 +328,13 @@ export default function EventMapPage() {
         onOpenMenu={onOpenMenu}
       />
 
-      <div className='relative min-h-0 flex-1'>
+      <div
+        className={cn(
+          'relative min-h-0 flex-1',
+          sidebarOpen && 'max-lg:pointer-events-none max-lg:[&_.leaflet-container]:!hidden',
+        )}
+        aria-hidden={sidebarOpen || undefined}
+      >
         <div className='absolute left-0 right-0 top-0 z-[1000] pointer-events-none'>
           <div className='pointer-events-auto mx-auto mt-3 flex max-w-4xl items-start gap-2 px-3'>
             <div className='flex flex-1 flex-col gap-2'>
@@ -388,23 +355,19 @@ export default function EventMapPage() {
                   className='h-10 shrink-0 rounded-xl px-3 hover:bg-muted'
                   title='Lokasi saya'
                 >
-                  <Navigation className={cn('size-4', isLocating && 'animate-pulse text-blue-500')} />
+                  <Navigation
+                    className={cn(
+                      'size-4',
+                      isLocating && 'animate-pulse text-blue-500',
+                    )}
+                  />
                 </Button>
               </div>
 
-              <div className='inline-flex w-fit items-center gap-4 rounded-xl border border-border/60 bg-surface-bright/95 px-4 py-2 shadow-md backdrop-blur-md'>
+              <div className='flex w-fit flex-col gap-2 rounded-xl border border-border/60 bg-surface-bright/95 px-4 py-2 shadow-md backdrop-blur-md'>
                 <span className='text-[0.65rem] sm:text-xs text-muted-foreground'>
                   {loading ? (
-                    <span className='flex items-center gap-1.5'>
-                      <Loader2 className='size-3 animate-spin' /> Memuat event…
-                    </span>
-                  ) : isGeocoding ? (
-                    <span className='flex items-center gap-1.5'>
-                      <Loader2 className='size-3 animate-spin text-primary-container' />
-                      <span>
-                        <span className='font-semibold text-foreground'>{filteredEvents.length}</span> event · geocoding lokasi…
-                      </span>
-                    </span>
+                    <InlineTextSkeleton className='h-3 w-28' />
                   ) : (
                     <>
                       {SHELL_COPY.pages.mapEventsFound(filteredEvents.length)}
@@ -412,31 +375,6 @@ export default function EventMapPage() {
                     </>
                   )}
                 </span>
-
-                {/* Pagination controls */}
-                {totalPages > 1 && (
-                  <div className='flex items-center gap-1 border-l border-border/40 pl-3 sm:pl-4'>
-                    <button
-                      type='button'
-                      disabled={page === 0}
-                      onClick={() => { setPage((p) => p - 1); setSelectedEvent(null); }}
-                      className='flex size-5 sm:size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30'
-                    >
-                      <ChevronLeft className='size-3.5' />
-                    </button>
-                    <span className='min-w-[2.5rem] sm:min-w-[3rem] text-center text-[0.65rem] sm:text-xs font-medium text-foreground'>
-                      {page + 1} / {totalPages}
-                    </span>
-                    <button
-                      type='button'
-                      disabled={page >= totalPages - 1}
-                      onClick={() => { setPage((p) => p + 1); setSelectedEvent(null); }}
-                      className='flex size-5 sm:size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30'
-                    >
-                      <ChevronRight className='size-3.5' />
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -460,7 +398,9 @@ export default function EventMapPage() {
               {filtersOpen && (
                 <div className='absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[280px] rounded-3xl border border-border/60 bg-surface-bright/95 p-5 shadow-2xl backdrop-blur-md sm:w-[320px] pointer-events-auto'>
                   <div className='space-y-1.5'>
-                    <label className='text-base font-bold text-foreground'>Kategori</label>
+                    <label className='text-base font-bold text-foreground'>
+                      Kategori
+                    </label>
                     <Select value={category} onValueChange={setCategory}>
                       <SelectTrigger className='h-12 rounded-2xl border-border bg-white text-sm'>
                         <SelectValue placeholder='Semua' />
@@ -517,9 +457,9 @@ export default function EventMapPage() {
             <Marker position={userPos} icon={userIcon} zIndexOffset={1000} />
           )}
 
-          {/* Event markers (current page) */}
+          {/* Event markers (all filtered) */}
           {!loading &&
-            pageEvents.map((ev) => {
+            filteredEvents.map((ev) => {
               const lat = parseFloat(ev.latitude);
               const lng = parseFloat(ev.longitude);
               if (isNaN(lat) || isNaN(lng)) return null;
@@ -549,7 +489,7 @@ export default function EventMapPage() {
           />
         )}
 
-        {!loading && !isGeocoding && filteredEvents.length === 0 && (
+        {!loading && filteredEvents.length === 0 && (
           <div className='pointer-events-none absolute inset-x-0 bottom-8 z-[1000] flex justify-center'>
             <div className='pointer-events-auto flex items-center gap-3 rounded-2xl border border-border/60 bg-surface-bright/95 px-6 py-4 shadow-xl backdrop-blur-md'>
               <Zap className='size-5 text-muted-foreground/40' />
@@ -607,24 +547,32 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
 
   const fitsRight = pixel.x + MARKER_OFFSET + CARD_W + 12 < containerWidth;
 
-  const left = fitsRight ? pixel.x + MARKER_OFFSET : pixel.x - CARD_W - MARKER_OFFSET;
+  const left = fitsRight
+    ? pixel.x + MARKER_OFFSET
+    : pixel.x - CARD_W - MARKER_OFFSET;
   const top = pixel.y;
 
   const participantCount =
-    event.participant_count ?? event.participants_count ?? event.current_participants ?? 0;
+    event.participant_count ??
+    event.participants_count ??
+    event.current_participants ??
+    0;
   const maxP = event.max_participants ?? '∞';
   const dateDisplay = formatEventDateRange(event.event_date, event.end_date);
   const formattedTime = formatTimeId(event.event_time);
-  const locationDisplay = formatLocation(event.location_address, event.location_area);
+  const locationDisplay = formatLocation(
+    event.location_address,
+    event.location_area,
+  );
 
   const dist =
     userPos && event.latitude && event.longitude
       ? haversineKm(
-        userPos[0],
-        userPos[1],
-        parseFloat(event.latitude),
-        parseFloat(event.longitude),
-      )
+          userPos[0],
+          userPos[1],
+          parseFloat(event.latitude),
+          parseFloat(event.longitude),
+        )
       : null;
 
   return (
@@ -685,7 +633,8 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
             {dateDisplay && (
               <p className='flex items-center gap-1.5 truncate'>
                 <Calendar className='size-3 shrink-0 text-primary-container/70' />
-                {dateDisplay}{formattedTime ? ` · ${formattedTime}` : ''}
+                {dateDisplay}
+                {formattedTime ? ` · ${formattedTime}` : ''}
               </p>
             )}
             {locationDisplay && (
@@ -699,7 +648,9 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
               {participantCount}/{maxP} peserta
               {dist !== null && (
                 <span className='ml-auto font-medium text-primary-container'>
-                  {dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}
+                  {dist < 1
+                    ? `${Math.round(dist * 1000)} m`
+                    : `${dist.toFixed(1)} km`}
                 </span>
               )}
             </p>

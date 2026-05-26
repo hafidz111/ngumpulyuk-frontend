@@ -12,10 +12,6 @@ export function isServiceErrorStatus(status) {
 }
 
 /**
- * Path untuk React Router jika status termasuk error server; selain itu `null`.
- * Dipakai setelah cek response API (mis. interceptor fetch/axios):
- * `const p = getServiceErrorPath(status); if (p) navigate(p, { replace: true });`
- *
  * @param {unknown} status
  * @returns {string | null}
  */

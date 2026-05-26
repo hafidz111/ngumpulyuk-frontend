@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronDown, ImagePlus, Loader2, X } from 'lucide-react';
+import { Check, ChevronDown, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { Card } from '@/presentation/components/ui/card';
 import { Button } from '@/presentation/components/ui/button';
 import { ThemedSearchField } from '@/presentation/components/themed-search-field';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
+import { ButtonBusySkeleton } from '@/presentation/components/skeletons';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { uploadThreadImage } from '@/infrastructure/storage/image-upload';
 
@@ -572,7 +573,7 @@ export function ThreadComposer({
               className='h-10 shrink-0 rounded-full bg-[#FF8000] px-6 text-sm font-bold text-white shadow-sm hover:bg-[#FF8000]/90 disabled:opacity-50'
             >
               {posting ? (
-                <Loader2 className='size-4 animate-spin' />
+                <ButtonBusySkeleton />
               ) : (
                 SHELL_COPY.threadComposer.postButton
               )}

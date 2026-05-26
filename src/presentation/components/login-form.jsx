@@ -9,6 +9,7 @@ import { Card } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { GoogleSignInButton } from '@/presentation/auth/components/google-sign-in-button';
+import { AUTH_FORM_INPUT_CLASS } from '@/presentation/layout/app-shell-chrome';
 
 export function LoginForm({
   className,
@@ -59,7 +60,10 @@ export function LoginForm({
                   autoComplete='email'
                   placeholder='Masukkan email kamu'
                   required
-                  className='h-12 rounded-full border-border bg-background pl-11 pr-4 text-sm shadow-none'
+                  className={cn(
+                    AUTH_FORM_INPUT_CLASS,
+                    'h-12 rounded-full pl-11 pr-4 text-sm',
+                  )}
                 />
               </div>
             </div>
@@ -83,7 +87,10 @@ export function LoginForm({
                   autoComplete='current-password'
                   placeholder='Masukkan kata sandi kamu'
                   required
-                  className='h-12 rounded-full border-border bg-background pl-11 pr-12 text-sm shadow-none'
+                  className={cn(
+                    AUTH_FORM_INPUT_CLASS,
+                    'h-12 rounded-full pl-11 pr-12 text-sm',
+                  )}
                 />
                 <button
                   type='button'

@@ -16,10 +16,7 @@ export function useChatActivityStats(enabled) {
   const [stats, setStats] = useState(DEFAULT_STATS);
 
   useEffect(() => {
-    if (!enabled) {
-      setStats({ ...DEFAULT_STATS, loading: false });
-      return;
-    }
+    if (!enabled) return;
 
     let cancelled = false;
 
@@ -47,6 +44,10 @@ export function useChatActivityStats(enabled) {
       cancelled = true;
     };
   }, [enabled]);
+
+  if (!enabled) {
+    return { ...DEFAULT_STATS, loading: false };
+  }
 
   return stats;
 }

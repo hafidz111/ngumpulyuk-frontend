@@ -14,19 +14,8 @@ export const ONBOARDING_ACTIVITIES = [
   { id: 'cooking', label: 'Cooking' },
 ];
 
-/** Area untuk dropdown Lokasi Pilihan (preferensi / step form). */
-export const AREA_OPTIONS = [
-  { id: 'jakarta-selatan', label: 'Jakarta Selatan' },
-  { id: 'jakarta-pusat', label: 'Jakarta Pusat' },
-  { id: 'jakarta-barat', label: 'Jakarta Barat' },
-  { id: 'jakarta-timur', label: 'Jakarta Timur' },
-  { id: 'jakarta-utara', label: 'Jakarta Utara' },
-  { id: 'bandung', label: 'Bandung' },
-  { id: 'surabaya', label: 'Surabaya' },
-  { id: 'yogyakarta', label: 'Yogyakarta' },
-  { id: 'bali', label: 'Bali' },
-  { id: 'lainnya', label: 'Lainnya' },
-];
+/** Kabupaten/Kota Indonesia (514) — { id: kode Kemendagri, label, province } */
+export { AREA_OPTIONS } from '@/shared/lib/indonesia-locations';
 
 /**
  * Waktu favorit — grid 2×2, multi-select (preferensi / step form).

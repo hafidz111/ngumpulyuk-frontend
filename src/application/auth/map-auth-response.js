@@ -1,5 +1,4 @@
 /**
- * Normalizes login/register payloads: supports flat DRF responses and `{ data: { ... } }` wrappers.
  * @param {Record<string, unknown>} data
  * @returns {{
  *   access: string | null;
@@ -60,7 +59,7 @@ export function mapLoginResponse(data) {
           ? root.is_staff
           : typeof root.is_superuser === 'boolean'
             ? root.is_superuser
-        : false;
+            : false;
 
   return {
     access,

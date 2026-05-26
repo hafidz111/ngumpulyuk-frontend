@@ -1,4 +1,4 @@
-import { format, isBefore, isSameDay, startOfDay } from 'date-fns';
+import { isBefore, isSameDay, startOfDay } from 'date-fns';
 
 /**
  * @param {{

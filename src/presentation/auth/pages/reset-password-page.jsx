@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { AUTH_FORM_INPUT_CLASS } from '@/presentation/layout/app-shell-chrome';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
 import { Button } from '@/presentation/components/ui/button';
@@ -100,7 +102,10 @@ export default function ResetPasswordPage() {
                   autoComplete='new-password'
                   required
                   minLength={8}
-                  className='h-12 rounded-full border-border bg-background pl-11 pr-12 text-sm shadow-none'
+                  className={cn(
+                    AUTH_FORM_INPUT_CLASS,
+                    'h-12 rounded-full pl-11 pr-12 text-sm',
+                  )}
                 />
                 <button
                   type='button'
@@ -139,7 +144,10 @@ export default function ResetPasswordPage() {
                   type={showConfirm ? 'text' : 'password'}
                   autoComplete='new-password'
                   required
-                  className='h-12 rounded-full border-border bg-background pl-11 pr-12 text-sm shadow-none'
+                  className={cn(
+                    AUTH_FORM_INPUT_CLASS,
+                    'h-12 rounded-full pl-11 pr-12 text-sm',
+                  )}
                 />
                 <button
                   type='button'

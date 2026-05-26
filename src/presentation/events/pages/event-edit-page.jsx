@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { FormPageSkeleton } from '@/presentation/components/skeletons';
 import { toast } from 'sonner';
 
 import { SHELL_COPY } from '@/shared/copy/shell-copy';
@@ -53,9 +53,7 @@ export default function EventEditPage() {
       <ChatFirstPageBody>
         <div className='mx-auto max-w-2xl'>
           {loading ? (
-            <div className='flex items-center justify-center py-20'>
-              <Loader2 className='size-8 animate-spin text-[#FF8000]' />
-            </div>
+            <FormPageSkeleton />
           ) : error ? (
             <p className='text-center text-sm text-destructive'>{error}</p>
           ) : event ? (
@@ -64,7 +62,6 @@ export default function EventEditPage() {
               onSubmit={handleUpdate}
               onCancel={() => navigate(-1)}
               submitLabel='Simpan Perubahan'
-              isEdit
             />
           ) : null}
         </div>

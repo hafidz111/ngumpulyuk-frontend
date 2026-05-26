@@ -52,6 +52,34 @@ body {
   min-height: 100svh;
 }
 
+/* Leaflet GPU layers can stack above portaled overlays on mobile WebKit. */
+.leaflet-container {
+  z-index: 0;
+}
+
+@media (max-width: 1023px) {
+  body.shell-menu-open .leaflet-container,
+  body.shell-menu-open .leaflet-pane,
+  body.shell-menu-open .leaflet-map-pane,
+  body.shell-menu-open .leaflet-tile-pane,
+  body.shell-menu-open .leaflet-overlay-pane,
+  body.shell-menu-open .leaflet-shadow-pane,
+  body.shell-menu-open .leaflet-marker-pane,
+  body.shell-menu-open .leaflet-tooltip-pane,
+  body.shell-menu-open .leaflet-popup-pane,
+  body.shell-menu-open .leaflet-tile,
+  body.shell-menu-open .leaflet-layer,
+  body.shell-menu-open .leaflet-zoom-animated {
+    z-index: 0 !important;
+  }
+
+  body.shell-menu-open .leaflet-container {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

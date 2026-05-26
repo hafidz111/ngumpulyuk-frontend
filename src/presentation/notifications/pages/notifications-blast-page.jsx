@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Megaphone } from 'lucide-react';
+import { Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { mapInterestsTaxonomyResponse } from '@/application/users/map-interests-taxonomy-response';
@@ -14,6 +14,10 @@ import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-heade
 import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
+import {
+  ButtonBusySkeleton,
+  InlineTextSkeleton,
+} from '@/presentation/components/skeletons';
 import {
   Card,
   CardContent,
@@ -418,7 +422,7 @@ export default function NotificationsBlastPage() {
                 <div className='space-y-2'>
                   <Label>Pilih satu atau beberapa interest</Label>
                   {loadingInterests ? (
-                    <p className='text-xs text-muted-foreground'>Memuat daftar interest...</p>
+                    <InlineTextSkeleton className='h-3 w-36' />
                   ) : null}
                   <div className='flex flex-wrap gap-2'>
                     {interestRows.map(({ interest }) => {
@@ -469,7 +473,7 @@ export default function NotificationsBlastPage() {
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className='size-4 animate-spin' />
+                      <ButtonBusySkeleton />
                       Mengirim...
                     </>
                   ) : (

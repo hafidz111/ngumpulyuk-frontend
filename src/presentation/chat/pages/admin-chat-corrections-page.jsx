@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { chatApi } from '@/infrastructure/chat/chat-api';
@@ -11,6 +10,11 @@ import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-heade
 import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
+import { OffsetPagination } from '@/presentation/components/offset-pagination';
+import {
+  AdminTableSkeleton,
+  ButtonBusySkeleton,
+} from '@/presentation/components/skeletons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -33,7 +37,7 @@ export default function AdminChatCorrectionsPage() {
   const [intentFilter, setIntentFilter] = useState('all');
   const [activeFilter, setActiveFilter] = useState('all');
   const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
   const [faqOptions, setFaqOptions] = useState([]);
   const [loadingFaqOptions, setLoadingFaqOptions] = useState(false);
   const [mode, setMode] = useState('manual');
@@ -61,11 +65,11 @@ export default function AdminChatCorrectionsPage() {
         const items = Array.isArray(root.items) ? root.items : [];
         const page = root.pagination ?? {};
         setRows(items);
-        setHasMore(Boolean(page.has_more));
+        setTotal(Number(page.total ?? items.length) || 0);
       } catch (err) {
         if (active) {
           setRows([]);
-          setHasMore(false);
+          setTotal(0);
           toast.error(err?.response?.data?.detail || 'Gagal memuat correction rules.');
         }
       } finally {
@@ -290,7 +294,7 @@ export default function AdminChatCorrectionsPage() {
               disabled={submitting}
               onClick={() => void submitForm()}
             >
-              {submitting ? <Loader2 className='size-4 animate-spin' /> : 'Simpan Rule'}
+              {submitting ? <ButtonBusySkeleton /> : 'Simpan Rule'}
             </Button>
           </CardContent>
         </Card>
@@ -321,11 +325,7 @@ export default function AdminChatCorrectionsPage() {
               </Select>
             </div>
 
-            {loading ? (
-              <div className='flex justify-center py-8'>
-                <Loader2 className='size-6 animate-spin text-muted-foreground' />
-              </div>
-            ) : null}
+            {loading ? <AdminTableSkeleton count={6} /> : null}
 
             {!loading && rows.length === 0 ? (
               <p className='text-sm text-muted-foreground'>Belum ada rules.</p>
@@ -364,24 +364,15 @@ export default function AdminChatCorrectionsPage() {
               </div>
             ))}
 
-            <div className='flex items-center justify-between pt-2'>
-              <Button
-                variant='outline'
-                className='rounded-full'
-                disabled={offset === 0 || loading}
-                onClick={() => setOffset((o) => Math.max(0, o - LIMIT))}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant='outline'
-                className='rounded-full'
-                disabled={!hasMore || loading}
-                onClick={() => setOffset((o) => o + LIMIT)}
-              >
-                Berikutnya
-              </Button>
-            </div>
+            <OffsetPagination
+              total={total}
+              limit={LIMIT}
+              offset={offset}
+              onOffsetChange={setOffset}
+              loading={loading}
+              anchorId='admin-chat-corrections'
+              className='pt-2'
+            />
           </CardContent>
         </Card>
           </>

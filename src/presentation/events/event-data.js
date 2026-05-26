@@ -1,19 +1,14 @@
-import { AREA_OPTIONS } from '../onboarding/onboarding-data';
-
-
-
-/** @type {{ id: string; label: string }[]} */
-export { AREA_OPTIONS };
+export { AREA_OPTIONS } from '@/shared/lib/indonesia-locations';
 
 /**
- * Build unique category options from event list payload.
  * @param {Array<Record<string, unknown>>} events
  */
 export function extractEventCategories(events = []) {
   const seen = new Map();
 
   events.forEach((event) => {
-    const raw = typeof event?.category === 'string' ? event.category.trim() : '';
+    const raw =
+      typeof event?.category === 'string' ? event.category.trim() : '';
     if (!raw) return;
     const key = raw.toLowerCase();
     if (!seen.has(key)) seen.set(key, raw);

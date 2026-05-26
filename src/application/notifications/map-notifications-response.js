@@ -1,8 +1,6 @@
 import { resolveNotificationLink } from './resolve-notification-link';
 
 /**
- * Normalizes list response from GET /v1/notifications/ (DRF-style or custom envelope).
- *
  * @param {unknown} raw Axios response.data or nested .data
  * @returns {{
  *   items: Array<Record<string, unknown>>;

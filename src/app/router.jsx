@@ -2,9 +2,13 @@ import { lazy, Suspense } from 'react';
 import {
   createBrowserRouter,
   Navigate,
+  Outlet,
   RouterProvider,
   useParams,
 } from 'react-router-dom';
+
+import { RouteSeo } from '@/presentation/seo/route-seo';
+import { RouteFallbackSkeleton } from '@/presentation/components/skeletons';
 
 import { ROUTES } from '../shared/config/routes';
 
@@ -63,7 +67,8 @@ const NotificationsPage = lazy(
   () => import('../presentation/notifications/pages/notifications-page.jsx'),
 );
 const NotificationsBlastPage = lazy(
-  () => import('../presentation/notifications/pages/notifications-blast-page.jsx'),
+  () =>
+    import('../presentation/notifications/pages/notifications-blast-page.jsx'),
 );
 const AdminChatMonitoringPage = lazy(
   () => import('../presentation/chat/pages/admin-chat-monitoring-page.jsx'),
@@ -89,93 +94,145 @@ const HttpErrorPage = lazy(
 const MaintenancePage = lazy(
   () => import('../presentation/error-pages/maintenance-page.jsx'),
 );
+const TermsPage = lazy(
+  () => import('../presentation/legal/pages/terms-page.jsx'),
+);
+const PrivacyPage = lazy(
+  () => import('../presentation/legal/pages/privacy-page.jsx'),
+);
 
 function RouteFallback() {
-  return (
-    <div className='flex min-h-svh items-center justify-center bg-surface font-display text-sm text-muted-foreground'>
-      Memuat…
-    </div>
-  );
+  return <RouteFallbackSkeleton />;
 }
 
 const suspense = (node) => (
   <Suspense fallback={<RouteFallback />}>{node}</Suspense>
 );
 
-/** Legacy notification URLs used API-style `/communities/:id`. */
 function LegacyCommunityRedirect() {
   const { id } = useParams();
-  return <Navigate to={ROUTES.communityDetail.replace(':id', id ?? '')} replace />;
+  return (
+    <Navigate to={ROUTES.communityDetail.replace(':id', id ?? '')} replace />
+  );
+}
+
+function AppRoot() {
+  return (
+    <>
+      <RouteSeo />
+      <Outlet />
+    </>
+  );
 }
 
 const router = createBrowserRouter([
   {
-    path: ROUTES.home,
-    element: suspense(<LandingPage />),
-  },
-  {
-    path: ROUTES.login,
-    element: suspense(<LoginPage />),
-  },
-  {
-    path: ROUTES.register,
-    element: suspense(<RegisterPage />),
-  },
-  {
-    path: ROUTES.verifyEmail,
-    element: suspense(<VerifyEmailPage />),
-  },
-  {
-    path: ROUTES.forgotPassword,
-    element: suspense(<ForgotPasswordPage />),
-  },
-  {
-    path: ROUTES.passwordResetConfirm,
-    element: suspense(<ResetPasswordPage />),
-  },
-  {
-    path: ROUTES.onboarding,
-    element: suspense(<OnboardingPage />),
-  },
-  {
-    element: suspense(<ChatFirstLayout />),
+    element: <AppRoot />,
     children: [
-      { path: ROUTES.chat, element: suspense(<ChatMainView />) },
-      { path: ROUTES.feed, element: <Navigate to={ROUTES.chat} replace /> },
-      { path: ROUTES.explore, element: <Navigate to={ROUTES.events} replace /> },
-      { path: ROUTES.events, element: suspense(<EventsListPage />) },
-      { path: ROUTES.eventCreate, element: suspense(<EventCreatePage />) },
-      { path: ROUTES.eventEdit, element: suspense(<EventEditPage />) },
-      { path: ROUTES.eventDetail, element: suspense(<EventDetailPage />) },
-      { path: ROUTES.community, element: suspense(<CommunityPage />) },
-      { path: ROUTES.communityCreate, element: suspense(<CommunityCreatePage />) },
-      { path: ROUTES.communityDetail, element: suspense(<CommunityDetailPage />) },
-      { path: '/communities/:id', element: <LegacyCommunityRedirect /> },
-      { path: ROUTES.threadDetail, element: suspense(<ThreadDetailPage />) },
-      { path: ROUTES.map, element: suspense(<EventMapPage />) },
-      { path: ROUTES.profile, element: suspense(<ProfilePage />) },
-      { path: ROUTES.profileByUsername, element: suspense(<ProfilePage />) },
-      { path: ROUTES.notifications, element: suspense(<NotificationsPage />) },
-      { path: ROUTES.notificationsBlast, element: suspense(<NotificationsBlastPage />) },
-      { path: ROUTES.adminChatMonitoring, element: suspense(<AdminChatMonitoringPage />) },
-      { path: ROUTES.adminChatCorrections, element: suspense(<AdminChatCorrectionsPage />) },
+      {
+        path: ROUTES.home,
+        element: suspense(<LandingPage />),
+      },
+      {
+        path: ROUTES.login,
+        element: suspense(<LoginPage />),
+      },
+      {
+        path: ROUTES.register,
+        element: suspense(<RegisterPage />),
+      },
+      {
+        path: ROUTES.terms,
+        element: suspense(<TermsPage />),
+      },
+      {
+        path: ROUTES.privacy,
+        element: suspense(<PrivacyPage />),
+      },
+      {
+        path: ROUTES.verifyEmail,
+        element: suspense(<VerifyEmailPage />),
+      },
+      {
+        path: ROUTES.forgotPassword,
+        element: suspense(<ForgotPasswordPage />),
+      },
+      {
+        path: ROUTES.passwordResetConfirm,
+        element: suspense(<ResetPasswordPage />),
+      },
+      {
+        path: ROUTES.onboarding,
+        element: suspense(<OnboardingPage />),
+      },
+      {
+        element: suspense(<ChatFirstLayout />),
+        children: [
+          { path: ROUTES.chat, element: suspense(<ChatMainView />) },
+          { path: ROUTES.feed, element: <Navigate to={ROUTES.chat} replace /> },
+          {
+            path: ROUTES.explore,
+            element: <Navigate to={ROUTES.events} replace />,
+          },
+          { path: ROUTES.events, element: suspense(<EventsListPage />) },
+          { path: ROUTES.eventCreate, element: suspense(<EventCreatePage />) },
+          { path: ROUTES.eventEdit, element: suspense(<EventEditPage />) },
+          { path: ROUTES.eventDetail, element: suspense(<EventDetailPage />) },
+          { path: ROUTES.community, element: suspense(<CommunityPage />) },
+          {
+            path: ROUTES.communityCreate,
+            element: suspense(<CommunityCreatePage />),
+          },
+          {
+            path: ROUTES.communityDetail,
+            element: suspense(<CommunityDetailPage />),
+          },
+          { path: '/communities/:id', element: <LegacyCommunityRedirect /> },
+          {
+            path: ROUTES.threadDetail,
+            element: suspense(<ThreadDetailPage />),
+          },
+          { path: ROUTES.map, element: suspense(<EventMapPage />) },
+          { path: ROUTES.profile, element: suspense(<ProfilePage />) },
+          {
+            path: ROUTES.profileByUsername,
+            element: suspense(<ProfilePage />),
+          },
+          {
+            path: ROUTES.notifications,
+            element: suspense(<NotificationsPage />),
+          },
+          {
+            path: ROUTES.notificationsBlast,
+            element: suspense(<NotificationsBlastPage />),
+          },
+          {
+            path: ROUTES.adminChatMonitoring,
+            element: suspense(<AdminChatMonitoringPage />),
+          },
+          {
+            path: ROUTES.adminChatCorrections,
+            element: suspense(<AdminChatCorrectionsPage />),
+          },
+        ],
+      },
+      {
+        path: ROUTES.notFound,
+        element: suspense(<NotFoundPage />),
+      },
+      {
+        path: ROUTES.maintenance,
+        element: suspense(<MaintenancePage />),
+      },
+      {
+        path: '/error/:code',
+        element: suspense(<HttpErrorPage />),
+      },
+      {
+        path: '*',
+        element: suspense(<NotFoundPage />),
+      },
     ],
-  },
-  {
-    path: ROUTES.notFound,
-    element: suspense(<NotFoundPage />),
-  },
-  {
-    path: ROUTES.maintenance,
-    element: suspense(<MaintenancePage />),
-  },
-  {
-    path: '/error/:code',
-    element: suspense(<HttpErrorPage />),
-  },
-  {
-    path: '*',
-    element: suspense(<NotFoundPage />),
   },
 ]);
 

@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { ButtonBusySkeleton } from '@/presentation/components/skeletons';
 
 import { Dialog, DialogContent } from '@/presentation/components/ui/dialog';
 import { Button } from '@/presentation/components/ui/button';
@@ -42,7 +42,7 @@ export function CommunityConfirmDialog({
               disabled={loading}
               className='rounded-full px-4'
             >
-              {loading ? <Loader2 className='size-4 animate-spin' /> : null}
+              {loading ? <ButtonBusySkeleton /> : null}
               {confirmLabel}
             </Button>
           </div>

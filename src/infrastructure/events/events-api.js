@@ -59,7 +59,6 @@ export const eventsApi = {
   },
 
   /**
-   * Fetch categories, e.g. for searching/recommendations
    * @param {Record<string, string | number>} [params]
    */
   categories(params) {

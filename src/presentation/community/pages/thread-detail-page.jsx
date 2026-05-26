@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ROUTES } from '@/shared/config/routes';
@@ -13,6 +13,8 @@ import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
 import { ThreadCard } from '../components/thread-card';
 import { ThreadCommentsDialog } from '../components/thread-comments-dialog';
+import { parseThreadCommentsResponse } from '../lib/parse-thread-comments-response';
+import { ThreadCardSkeleton } from '@/presentation/components/skeletons';
 
 function extractPayload(payload) {
   return payload?.data ?? payload;
@@ -57,13 +59,7 @@ export default function ThreadDetailPage() {
     setCommentsLoading(true);
     try {
       const res = await communitiesApi.threadComments(targetThread.id, { limit: 50, offset: 0 });
-      const data = extractPayload(res.data);
-      const items = Array.isArray(data?.results)
-        ? data.results
-        : Array.isArray(data)
-          ? data
-          : [];
-      setComments(items);
+      setComments(parseThreadCommentsResponse(res.data));
     } catch {
       setComments([]);
       toast.error('Gagal memuat komentar.');
@@ -176,9 +172,7 @@ export default function ThreadDetailPage() {
           </Button>
 
           {loading ? (
-            <div className='flex items-center justify-center py-20'>
-              <Loader2 className='size-7 animate-spin text-primary-container' />
-            </div>
+            <ThreadCardSkeleton className='p-6' />
           ) : !thread ? (
             <Card className='border border-border/80 bg-card p-10 text-center'>
               <MessageCircle className='mx-auto size-8 text-muted-foreground/30' />

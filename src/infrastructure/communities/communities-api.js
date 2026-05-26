@@ -2,23 +2,20 @@ import { apiClient } from '@/infrastructure/http/api-client';
 
 export const communitiesApi = {
   /**
-   * List communities
-   * @param {Record<string, string | number>} [params] — search, category, verified, limit, offset
+   * @param {Record<string, string | number>} [params]
    */
   list(params) {
     return apiClient.get('/v1/communities/', { params });
   },
 
   /**
-   * Create a new community
-   * @param {Record<string, unknown>} body — name, description, category, cover_image, logo
+   * @param {Record<string, unknown>} body
    */
   create(body) {
     return apiClient.post('/v1/communities/', body);
   },
 
   /**
-   * Get community detail
    * @param {string} id
    */
   getById(id) {
@@ -26,7 +23,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Delete community
    * @param {string} id
    */
   remove(id) {
@@ -34,7 +30,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Join a community
    * @param {string} id
    */
   join(id) {
@@ -42,7 +37,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Leave a community
    * @param {string} id
    */
   leave(id) {
@@ -50,52 +44,49 @@ export const communitiesApi = {
   },
 
   /**
-   * List community members
    * @param {string} id
-   * @param {Record<string, string | number>} [params] — limit, offset, role
+   * @param {Record<string, string | number>} [params]
    */
   members(id, params) {
     return apiClient.get(`/v1/communities/${id}/members/`, { params });
   },
 
   /**
-   * List community threads
    * @param {string} id
-   * @param {Record<string, string | number>} [params] — limit, offset, sort
+   * @param {Record<string, string | number>} [params]
    */
   threads(id, params) {
     return apiClient.get(`/v1/communities/${id}/threads/`, { params });
   },
 
   /**
-   * Create a thread in a community
    * @param {string} id
-   * @param {Record<string, unknown>} body — title, content, images, related_event_id?
+   * @param {Record<string, unknown>} body
    */
   createThread(id, body) {
     return apiClient.post(`/v1/communities/${id}/threads/`, body);
   },
 
   /**
-   * Create a thread in global feed (without specific community)
-   * @param {Record<string, unknown>} body — title, content, images, related_event_id?
+   * @param {Record<string, unknown>} body
    */
   createGlobalThread(body) {
     return apiClient.post('/v1/threads/', body);
   },
 
   /**
-   * Update member role in a community
    * @param {string | number} communityId
    * @param {string | number} userId
    * @param {string} role
    */
   updateMemberRole(communityId, userId, role = 'admin') {
-    return apiClient.patch(`/v1/communities/${communityId}/members/${userId}/role/`, { role });
+    return apiClient.patch(
+      `/v1/communities/${communityId}/members/${userId}/role/`,
+      { role },
+    );
   },
 
   /**
-   * Backward-compatible alias for update member role
    * @param {string | number} communityId
    * @param {string | number} userId
    * @param {string} role
@@ -105,7 +96,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Remove thread
    * @param {string | number} threadId
    */
   removeThread(threadId) {
@@ -113,7 +103,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Global thread feed
    * @param {Record<string, string | number>} [params]
    */
   threadFeed(params) {
@@ -121,7 +110,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Get thread detail
    * @param {string | number} threadId
    */
   getThreadById(threadId) {
@@ -129,7 +117,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Like a thread
    * @param {string | number} threadId
    */
   likeThread(threadId) {
@@ -137,7 +124,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Unlike a thread
    * @param {string | number} threadId
    */
   unlikeThread(threadId) {
@@ -145,7 +131,6 @@ export const communitiesApi = {
   },
 
   /**
-   * List comments for a thread
    * @param {string | number} threadId
    * @param {Record<string, string | number>} [params]
    */
@@ -154,7 +139,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Add comment to a thread
    * @param {string | number} threadId
    * @param {Record<string, unknown>} body
    */
@@ -163,7 +147,6 @@ export const communitiesApi = {
   },
 
   /**
-   * Like a comment
    * @param {string | number} commentId
    */
   likeComment(commentId) {

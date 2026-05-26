@@ -6,7 +6,6 @@ import {
   Calendar,
   Clock,
   Edit3,
-  Loader2,
   LogIn,
   LogOut,
   MapPin,
@@ -31,6 +30,10 @@ import { AvatarGroup, AvatarGroupCount } from '@/presentation/components/ui/avat
 import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
 import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
 import { useChatPageShell } from '@/presentation/layout/use-chat-page-shell';
+import {
+  ButtonBusySkeleton,
+  EventDetailSkeleton,
+} from '@/presentation/components/skeletons';
 import { formatTimeId, formatLocation, formatEventDateRange } from '@/shared/lib/formatters';
 
 const DIFFICULTY_LABEL = {
@@ -132,6 +135,15 @@ export default function EventDetailPage() {
   const participantCount = event?.participant_count ?? event?.participants_count ?? participants.length;
   const maxP = event?.max_participants;
   const isFull = maxP && participantCount >= maxP;
+  const eventStatus = String(event?.status || '').toLowerCase();
+  const isEventClosed = eventStatus === 'completed' || eventStatus === 'cancelled';
+  const joinButtonLabel = isEventClosed
+    ? eventStatus === 'cancelled'
+      ? 'Event Dibatalkan'
+      : 'Event Selesai'
+    : isFull
+      ? 'Event Penuh'
+      : 'Gabung Event';
 
   const loadEvent = useCallback(async () => {
     try {
@@ -270,9 +282,7 @@ export default function EventDetailPage() {
           </Button>
 
           {loading ? (
-            <div className='flex items-center justify-center py-32'>
-              <Loader2 className='size-8 animate-spin text-primary-container' />
-            </div>
+            <EventDetailSkeleton />
           ) : error || !event ? (
             <div className='flex flex-col items-center justify-center gap-4 py-32 text-center'>
               <Zap className='size-12 text-muted-foreground/30' />
@@ -419,7 +429,7 @@ export default function EventDetailPage() {
                       className='h-11 w-full rounded-full border-red-300 text-red-600 hover:bg-red-50'
                     >
                       {actionLoading === 'delete' ? (
-                        <Loader2 className='size-4 animate-spin' />
+                        <ButtonBusySkeleton />
                       ) : (
                         <Trash2 className='size-4' />
                       )}
@@ -434,7 +444,7 @@ export default function EventDetailPage() {
                     className='h-11 w-full rounded-full border-red-300 text-red-600 hover:bg-red-50'
                   >
                     {actionLoading === 'leave' ? (
-                      <Loader2 className='size-4 animate-spin' />
+                      <ButtonBusySkeleton />
                     ) : (
                       <LogOut className='size-4' />
                     )}
@@ -442,16 +452,16 @@ export default function EventDetailPage() {
                   </Button>
                 ) : (
                   <Button
-                    disabled={isFull || !!actionLoading}
+                    disabled={isFull || isEventClosed || !!actionLoading}
                     onClick={handleJoin}
-                    className='h-11 w-full rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+                    className='h-11 w-full rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90 disabled:opacity-60'
                   >
                     {actionLoading === 'join' ? (
-                      <Loader2 className='size-4 animate-spin' />
+                      <ButtonBusySkeleton />
                     ) : (
                       <LogIn className='size-4' />
                     )}
-                    {isFull ? 'Event Penuh' : 'Gabung Event'}
+                    {joinButtonLabel}
                   </Button>
                 )}
               </div>
@@ -503,12 +513,13 @@ export default function EventDetailPage() {
   );
 }
 
-function InfoItem({ icon: Icon, label, value }) {
+function InfoItem({ icon, label, value }) {
   if (!value) return null;
+  const InfoIcon = icon;
   return (
     <div className='flex items-start gap-3 rounded-xl bg-card p-3 shadow-sm border border-border/40'>
       <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-container/15 text-primary-container'>
-        <Icon className='size-4' />
+        <InfoIcon className='size-4' />
       </span>
       <div className='min-w-0'>
         <p className='text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground'>

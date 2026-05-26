@@ -43,9 +43,9 @@ import {
 } from '@/presentation/components/ui/select';
 import { Separator } from '@/presentation/components/ui/separator';
 import { useAuth } from '../auth/hooks/use-auth';
+import { LocationAreaSelect } from '@/presentation/components/location-area-select';
 import {
   ACTIVITY_LEVEL_OPTIONS,
-  AREA_OPTIONS,
   EVENT_TIME_OPTIONS,
   MIN_INTEREST_SELECTIONS,
   ONBOARDING_ACTIVITIES,
@@ -244,7 +244,7 @@ export default function OnboardingPage() {
                         <button
                           type='button'
                           className={cn(
-                            'relative flex h-12 w-full items-center rounded-full border border-border bg-muted/40 px-4 text-left text-sm outline-none transition-colors',
+                            'relative flex h-12 w-full items-center rounded-full border border-border bg-white px-4 text-left text-sm outline-none transition-colors',
                             'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
                             !birthDate && 'text-muted-foreground',
                           )}
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
                       Gender
                     </label>
                     <Select value={gender} onValueChange={setGender}>
-                      <SelectTrigger className='h-12 w-full rounded-full border-border bg-muted/40 px-4 text-left'>
+                      <SelectTrigger className='h-12 w-full rounded-full border-border bg-white px-4 text-left'>
                         <SelectValue placeholder='Pilih gender' />
                       </SelectTrigger>
                       <SelectContent>
@@ -360,7 +360,7 @@ export default function OnboardingPage() {
                         }
                       }}
                       placeholder='Contoh: Voli, Panahan, Senam…'
-                      className='h-11 rounded-full border-border bg-muted/30'
+                      className='h-11 rounded-full border-border bg-white'
                     />
                     <Button
                       type='button'
@@ -417,21 +417,12 @@ export default function OnboardingPage() {
                     <MapPin className='size-4 text-primary-container' aria-hidden />
                     Lokasi Pilihan
                   </Label>
-                  <Select value={locationAreaId} onValueChange={setLocationAreaId}>
-                    <SelectTrigger
-                      id='onboarding-area'
-                      className='h-12 w-full rounded-xl border-border bg-muted/40 px-4 text-left'
-                    >
-                      <SelectValue placeholder='Pilih area' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AREA_OPTIONS.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <LocationAreaSelect
+                    value={locationAreaId}
+                    onValueChange={setLocationAreaId}
+                    placeholder='Pilih kabupaten/kota'
+                    className='h-12 rounded-xl'
+                  />
                 </div>
 
                 <div className='space-y-3'>
@@ -482,7 +473,7 @@ export default function OnboardingPage() {
                   <Select value={activityLevel} onValueChange={setActivityLevel}>
                     <SelectTrigger
                       id='onboarding-level'
-                      className='h-12 w-full rounded-xl border-border bg-muted/40 px-4 text-left'
+                      className='h-12 w-full rounded-xl border-border bg-white px-4 text-left'
                     >
                       <SelectValue placeholder='Seberapa aktif kamu?' />
                     </SelectTrigger>

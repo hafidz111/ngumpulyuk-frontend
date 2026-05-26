@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { ButtonBusySkeleton } from '@/presentation/components/skeletons';
 
 import { Button } from '../components/ui/button';
 import { CardFooter } from '../components/ui/card';
@@ -18,7 +18,7 @@ export function OutageRecoveryActions() {
       >
         {checking ? (
           <>
-            <Loader2 className='mr-2 size-4 animate-spin' aria-hidden />
+            <ButtonBusySkeleton className='mr-2' />
             Memeriksa layanan…
           </>
         ) : (

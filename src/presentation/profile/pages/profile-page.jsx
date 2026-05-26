@@ -4,7 +4,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock3,
-  Loader2,
   LogOut,
   MapPin,
   PencilLine,
@@ -27,6 +26,11 @@ import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
+import {
+  ButtonBusySkeleton,
+  ListRowsSkeleton,
+  ProfilePageSkeleton,
+} from '@/presentation/components/skeletons';
 
 const ACTIVITY_LIMIT = 20;
 
@@ -315,9 +319,7 @@ export default function ProfilePage() {
       <ChatFirstPageBody>
         <div className='mx-auto max-w-5xl space-y-6'>
         {loading ? (
-          <div className='flex items-center justify-center py-24'>
-            <Loader2 className='size-8 animate-spin text-primary-container' />
-          </div>
+          <ProfilePageSkeleton />
         ) : !profile ? (
           <Card className='border border-border/80 bg-card p-8 text-center'>
             <p className='text-muted-foreground'>{SHELL_COPY.pages.profileNotFound}</p>
@@ -422,7 +424,7 @@ export default function ProfilePage() {
                       disabled={saving}
                       className='rounded-full'
                     >
-                      {saving ? <Loader2 className='size-4 animate-spin' /> : <Save className='size-4' />}
+                      {saving ? <ButtonBusySkeleton /> : <Save className='size-4' />}
                       Simpan Profil
                     </Button>
                   </div>
@@ -456,9 +458,7 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   {activitiesLoading ? (
-                    <div className='flex items-center justify-center py-10'>
-                      <Loader2 className='size-5 animate-spin text-primary-container' />
-                    </div>
+                    <ListRowsSkeleton rows={3} className='mt-4' />
                   ) : upcomingFollowedEvents.length === 0 ? (
                     <p className='py-8 text-sm text-muted-foreground'>Belum ada event akan datang.</p>
                   ) : (
@@ -488,9 +488,7 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   {activitiesLoading ? (
-                    <div className='flex items-center justify-center py-10'>
-                      <Loader2 className='size-5 animate-spin text-primary-container' />
-                    </div>
+                    <ListRowsSkeleton rows={3} className='mt-4' />
                   ) : historyFollowedEvents.length === 0 ? (
                     <p className='py-8 text-sm text-muted-foreground'>Belum ada riwayat event.</p>
                   ) : (
@@ -521,7 +519,7 @@ export default function ProfilePage() {
                       onClick={() => fetchActivities(activityOffset + ACTIVITY_LIMIT, true)}
                       disabled={activitiesLoadingMore}
                     >
-                      {activitiesLoadingMore ? <Loader2 className='size-4 animate-spin' /> : null}
+                      {activitiesLoadingMore ? <ButtonBusySkeleton /> : null}
                       Muat lebih banyak
                     </Button>
                   </div>
@@ -547,7 +545,7 @@ export default function ProfilePage() {
                     className='flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF8000] text-sm font-bold text-white shadow-sm transition hover:bg-[#FF8000]/90 active:scale-[0.99] disabled:opacity-60'
                   >
                     {logoutPending ? (
-                      <Loader2 className='size-4 animate-spin' />
+                      <ButtonBusySkeleton />
                     ) : (
                       <LogOut className='size-4' />
                     )}

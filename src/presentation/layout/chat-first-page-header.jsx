@@ -37,7 +37,7 @@ export function ChatFirstPageHeader({
       className={cn(
         APP_SHELL_HEADER_CLASS,
         APP_SHELL_HEADER_X,
-        'z-10 justify-between gap-3',
+        'relative z-20 justify-between gap-3',
       )}
     >
       <div className='flex h-full min-w-0 flex-1 items-center gap-3'>

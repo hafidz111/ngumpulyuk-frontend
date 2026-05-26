@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
-  Loader2,
   LogOut,
   Settings,
   Shield,
@@ -31,7 +30,13 @@ import { ThreadComposer } from '../components/thread-composer';
 import { MemberSection } from '../components/member-section';
 import { ManageAdminsModal } from '../components/manage-admins-modal';
 import { ThreadCommentsDialog } from '../components/thread-comments-dialog';
+import { parseThreadCommentsResponse } from '../lib/parse-thread-comments-response';
 import { CommunityConfirmDialog } from '../components/community-confirm-dialog';
+import {
+  ButtonBusySkeleton,
+  CommunityDetailSkeleton,
+  ThreadFeedSkeleton,
+} from '@/presentation/components/skeletons';
 
 function extractCollection(payload) {
   const data = payload?.data ?? payload;
@@ -268,13 +273,7 @@ export default function CommunityDetailPage() {
     setCommentsLoading(true);
     try {
       const res = await communitiesApi.threadComments(thread.id, { limit: 50, offset: 0 });
-      const data = res.data;
-      let items = [];
-      if (Array.isArray(data)) items = data;
-      else if (Array.isArray(data?.results)) items = data.results;
-      else if (Array.isArray(data?.data)) items = data.data;
-      else if (Array.isArray(data?.data?.results)) items = data.data.results;
-      setComments(items);
+      setComments(parseThreadCommentsResponse(res.data));
     } catch {
       setComments([]);
       toast.error('Gagal memuat komentar.');
@@ -366,9 +365,7 @@ export default function CommunityDetailPage() {
           </button>
 
           {loading ? (
-            <div className='flex items-center justify-center py-24'>
-              <Loader2 className='size-8 animate-spin text-[#FF8000]' />
-            </div>
+            <CommunityDetailSkeleton />
           ) : error || !community ? (
             <div className='flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/70 bg-white px-6 py-20 text-center'>
               <Zap className='size-10 text-[#FF8000]/40' />
@@ -461,7 +458,7 @@ export default function CommunityDetailPage() {
                   className={cn('shrink-0 px-5', APP_SHELL_SECONDARY_BUTTON_CLASS)}
                 >
                   {confirmLoading && confirmType === 'owner-leave-community' ? (
-                    <Loader2 className='size-4 animate-spin' />
+                    <ButtonBusySkeleton />
                   ) : (
                     <LogOut className='size-4' />
                   )}
@@ -476,7 +473,7 @@ export default function CommunityDetailPage() {
                   className={cn('shrink-0 px-5', APP_SHELL_SECONDARY_BUTTON_CLASS)}
                 >
                   {confirmLoading && confirmType === 'leave-community' ? (
-                    <Loader2 className='size-4 animate-spin' />
+                    <ButtonBusySkeleton />
                   ) : (
                     <LogOut className='size-4' />
                   )}
@@ -491,7 +488,7 @@ export default function CommunityDetailPage() {
                 className='shrink-0 rounded-full bg-[#FF8000] px-5 font-semibold text-white hover:bg-[#FF8000]/90'
               >
                 {confirmLoading && confirmType === 'join-community' ? (
-                  <Loader2 className='size-4 animate-spin' />
+                  <ButtonBusySkeleton />
                 ) : (
                   <UserPlus className='size-4' />
                 )}
@@ -522,9 +519,7 @@ export default function CommunityDetailPage() {
           ) : null}
 
           {threadsLoading ? (
-            <div className='flex items-center justify-center py-12'>
-              <Loader2 className='size-6 animate-spin text-[#FF8000]' />
-            </div>
+            <ThreadFeedSkeleton count={2} />
           ) : threads.length === 0 ? (
             <Card className='border border-dashed border-border/70 bg-white p-10 text-center'>
               <Zap className='mx-auto size-8 text-[#FF8000]/35' />

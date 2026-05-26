@@ -1,5 +1,3 @@
-/** Copy Gen Z untuk shell app (header, sidebar, chat, navigasi). */
-
 export const SHELL_COPY = {
   brand: {
     ngumpulyukDesc: 'Tempat ngumpul yang actually fun',

@@ -63,9 +63,9 @@ export function useGoogleAuthSubmit() {
             ? mapped.onboardingCompleted
             : Boolean(
                 resolvedEmail &&
-                  localStorage.getItem(
-                    `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
-                  ) === '1',
+                localStorage.getItem(
+                  `ngumpulyuk.onboarded.${resolvedEmail.toLowerCase()}`,
+                ) === '1',
               );
         const nextPath = isOnboarded ? ROUTES.chat : ROUTES.onboarding;
         toast.success('Berhasil masuk dengan Google.', { duration: 4000 });

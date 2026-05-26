@@ -113,7 +113,9 @@ export function AuthProvider({ children }) {
           displayName:
             String(data.full_name ?? '').trim() ||
             current.displayName ||
-            displayNameFromEmail(String(data.email ?? current.email ?? '').trim()),
+            displayNameFromEmail(
+              String(data.email ?? current.email ?? '').trim(),
+            ),
           isOnboarded:
             typeof data.onboarding_completed === 'boolean'
               ? data.onboarding_completed
@@ -134,7 +136,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Sets session after successful login (or verify-email if API returns tokens).
    * @param {{
    *   access: string | null;
    *   refresh?: string | null;
@@ -146,41 +147,44 @@ export function AuthProvider({ children }) {
    *   isStaff?: boolean | null;
    * }} payload
    */
-  const setSession = useCallback((payload) => {
-    const {
-      access,
-      refresh,
-      userId,
-      username,
-      email,
-      fullName,
-      onboardingCompleted,
-      isStaff,
-    } = payload;
-    if (access) setAccessToken(access);
-    if (refresh !== undefined && refresh !== null) setRefreshToken(refresh);
-    const e = String(email ?? '').trim();
-    const key = onboardingKeyForEmail(e);
-    if (typeof onboardingCompleted === 'boolean' && key) {
-      if (onboardingCompleted) {
-        localStorage.setItem(key, '1');
-      } else {
-        localStorage.removeItem(key);
+  const setSession = useCallback(
+    (payload) => {
+      const {
+        access,
+        refresh,
+        userId,
+        username,
+        email,
+        fullName,
+        onboardingCompleted,
+        isStaff,
+      } = payload;
+      if (access) setAccessToken(access);
+      if (refresh !== undefined && refresh !== null) setRefreshToken(refresh);
+      const e = String(email ?? '').trim();
+      const key = onboardingKeyForEmail(e);
+      if (typeof onboardingCompleted === 'boolean' && key) {
+        if (onboardingCompleted) {
+          localStorage.setItem(key, '1');
+        } else {
+          localStorage.removeItem(key);
+        }
       }
-    }
-    const next = buildUserState({
-      userId,
-      username,
-      email,
-      fullName,
-      onboardingCompleted,
-      isStaff,
-    });
-    persistUser(next);
-    setUser(next);
-    setIsAuthenticated(true);
-    void hydrateUserProfile();
-  }, [hydrateUserProfile]);
+      const next = buildUserState({
+        userId,
+        username,
+        email,
+        fullName,
+        onboardingCompleted,
+        isStaff,
+      });
+      persistUser(next);
+      setUser(next);
+      setIsAuthenticated(true);
+      void hydrateUserProfile();
+    },
+    [hydrateUserProfile],
+  );
 
   const completeOnboarding = useCallback(() => {
     setUser((current) => {
@@ -208,7 +212,7 @@ export function AuthProvider({ children }) {
         await authApi.logout({ refresh_token: refreshToken });
       }
     } catch {
-      /* tetap bersihkan sesi lokal */
+      /* clean local session */
     } finally {
       try {
         await unregisterPushDeviceIfAny();
