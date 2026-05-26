@@ -48,6 +48,12 @@ export default function RegisterPage() {
       );
       navigate(ROUTES.verifyEmail, { replace: true });
     } catch (err) {
+      if (isApiErrorCode(err, ['EMAIL_DELIVERY_FAILED'])) {
+        toast.error(getAuthErrorMessage(err, 'Gagal mengirim email OTP.'), {
+          duration: 5000,
+        });
+        return;
+      }
       if (isServiceUnavailableError(err)) {
         toast.error(getServiceUnavailableMessage(err), { duration: 5000 });
         return;

@@ -23,9 +23,7 @@ export default function VerifyEmailPage() {
   const location = useLocation();
   const { setSession } = useAuth();
   const [otp, setOtp] = useState('');
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resendError, setResendError] = useState('');
   const [isResending, setIsResending] = useState(false);
   const [cooldownSec, setCooldownSec] = useState(0);
 
@@ -61,7 +59,6 @@ export default function VerifyEmailPage() {
 
   async function handleResend() {
     if (cooldownSec > 0 || !resolvedEmail || isResending) return;
-    setResendError('');
     setIsResending(true);
     try {
       await authApi.resendVerification({ email: resolvedEmail });
@@ -69,10 +66,14 @@ export default function VerifyEmailPage() {
       setCooldownSec(RESEND_COOLDOWN_SEC);
     } catch (err) {
       if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_VERIFIED'])) {
-        setResendError('Email ini sudah terverifikasi. Silakan login.');
+        toast.info('Email ini sudah terverifikasi. Silakan login.', {
+          duration: 4000,
+        });
         return;
       }
-      setResendError(getAuthErrorMessage(err, 'Gagal mengirim ulang kode.'));
+      toast.error(getAuthErrorMessage(err, 'Gagal mengirim ulang kode.'), {
+        duration: 5000,
+      });
     } finally {
       setIsResending(false);
     }
@@ -80,10 +81,9 @@ export default function VerifyEmailPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
     const code = otp.trim();
     if (!code) {
-      setError('Masukkan kode OTP.');
+      toast.error('Masukkan kode OTP.', { duration: 4000 });
       return;
     }
     setIsSubmitting(true);
@@ -135,7 +135,9 @@ export default function VerifyEmailPage() {
         });
         return;
       }
-      setError(getAuthErrorMessage(err, 'Verifikasi gagal.'));
+      toast.error(getAuthErrorMessage(err, 'Verifikasi gagal.'), {
+        duration: 4000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -180,12 +182,6 @@ export default function VerifyEmailPage() {
               />
             </div>
 
-            {error ? (
-              <p className='text-center text-sm text-destructive' role='alert'>
-                {error}
-              </p>
-            ) : null}
-
             <Button
               type='submit'
               disabled={isSubmitting}
@@ -216,11 +212,6 @@ export default function VerifyEmailPage() {
                     ? `Kirim ulang (${cooldownSec}s)`
                     : 'Kirim ulang kode'}
               </Button>
-              {resendError ? (
-                <p className='text-center text-sm text-destructive' role='alert'>
-                  {resendError}
-                </p>
-              ) : null}
             </div>
           </form>
         </Card>
