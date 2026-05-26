@@ -6,6 +6,7 @@ import { getAuthErrorMessage } from '@/application/auth/auth-error';
 import { isEmailNotVerifiedLoginError } from '@/application/auth/is-email-not-verified-error';
 import { mapLoginResponse } from '@/application/auth/map-auth-response';
 import { authApi } from '@/infrastructure/auth/auth-api';
+import { clearAllAuthStorage } from '@/infrastructure/http/token-storage';
 import { ROUTES } from '@/shared/config/routes';
 import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
 import { useAuth } from './use-auth';
@@ -37,6 +38,7 @@ export function useGoogleAuthSubmit() {
         return;
       }
       setIsGoogleLoading(true);
+      clearAllAuthStorage();
       try {
         const { data } = await authApi.google({ access_token: token });
         const mapped = mapLoginResponse(

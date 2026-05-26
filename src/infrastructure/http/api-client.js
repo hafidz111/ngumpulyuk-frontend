@@ -26,6 +26,13 @@ function isAuthRoute(url) {
   return /\/auth\//.test(String(url ?? ''));
 }
 
+/** Login/register/Google — 401 = kredensial salah, jangan refresh/redirect sesi. */
+function isCredentialAuthRequest(url) {
+  return /\/auth\/(login|register|google|verify-email|resend-verification|password-reset)\//.test(
+    String(url ?? ''),
+  );
+}
+
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -88,7 +95,12 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (status === 401 && !originalRequest._retry && !isLogoutRequest) {
+    if (
+      status === 401 &&
+      !originalRequest._retry &&
+      !isLogoutRequest &&
+      !isCredentialAuthRequest(url)
+    ) {
       const refreshToken = getRefreshToken();
 
       if (!refreshToken) {

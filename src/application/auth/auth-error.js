@@ -57,7 +57,11 @@ export function translateAuthMessage(message) {
     return AUTH_MESSAGE_ID['token is invalid or has expired'];
   }
   if (lower.includes('continue your login with')) {
-    return `Lanjutkan login dengan akun yang sama (${raw.replace(/^please continue your login with\s*/i, '')}).`;
+    const provider = raw.replace(/^please continue your login with\s*/i, '').trim();
+    if (provider === 'email') {
+      return 'Email ini sudah terdaftar dengan kata sandi. Masuk lewat email, bukan Google.';
+    }
+    return `Akun ini terdaftar dengan ${provider}. Gunakan metode masuk yang sama.`;
   }
   if (
     lower.includes('already exists') &&
