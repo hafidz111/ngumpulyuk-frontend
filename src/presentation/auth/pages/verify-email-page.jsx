@@ -79,9 +79,13 @@ export default function VerifyEmailPage() {
     }
   }
 
+  function handleOtpChange(ev) {
+    setOtp(ev.target.value.replace(/\s/g, ''));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    const code = otp.trim();
+    const code = otp.replace(/\s/g, '');
     if (!code) {
       toast.error('Masukkan kode OTP.', { duration: 4000 });
       return;
@@ -121,18 +125,17 @@ export default function VerifyEmailPage() {
         });
         return;
       }
-      navigate(ROUTES.login, {
-        replace: true,
-        state: { message: 'Email berhasil diverifikasi. Silakan masuk.' },
+      toast.success('Email berhasil diverifikasi. Silakan masuk.', {
+        duration: 4000,
       });
+      navigate(ROUTES.login, { replace: true });
     } catch (err) {
       if (isApiErrorCode(err, ['CONFLICT', 'EMAIL_ALREADY_VERIFIED'])) {
         sessionStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
-        toast.info('Email sudah terverifikasi. Silakan login.');
-        navigate(ROUTES.login, {
-          replace: true,
-          state: { message: 'Email sudah terverifikasi. Silakan masuk.' },
+        toast.info('Email sudah terverifikasi. Silakan login.', {
+          duration: 4000,
         });
+        navigate(ROUTES.login, { replace: true });
         return;
       }
       toast.error(getAuthErrorMessage(err, 'Verifikasi gagal.'), {
@@ -173,7 +176,7 @@ export default function VerifyEmailPage() {
                 autoComplete='one-time-code'
                 placeholder='Kode verifikasi'
                 value={otp}
-                onChange={(ev) => setOtp(ev.target.value)}
+                onChange={handleOtpChange}
                 className={cn(
                   AUTH_FORM_INPUT_CLASS,
                   'h-12 rounded-full text-center text-lg tracking-[0.3em]',

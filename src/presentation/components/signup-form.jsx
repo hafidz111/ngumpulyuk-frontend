@@ -200,6 +200,9 @@ export function SignupForm({
                     )}
                   </button>
                 </div>
+                <p className='text-xs text-muted-foreground'>
+                  Minimal 8 karakter, huruf kapital, huruf kecil, dan angka.
+                </p>
               </div>
 
               <div className='space-y-2'>
@@ -217,6 +220,7 @@ export function SignupForm({
                     type={showConfirmPassword ? 'text' : 'password'}
                     autoComplete='new-password'
                     placeholder='Masukkan konfirmasi kata sandi kamu'
+                    minLength={8}
                     required
                     className={cn(AUTH_INPUT_CLASS, 'pl-11 pr-12')}
                   />

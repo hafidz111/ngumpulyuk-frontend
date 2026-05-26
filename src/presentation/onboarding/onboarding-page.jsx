@@ -548,40 +548,40 @@ export default function OnboardingPage() {
                 type='button'
                 disabled={isCompleting}
                 onClick={() => void handleNext()}
-                className='h-12 w-full rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+                className='h-11 w-full rounded-full bg-primary-container text-sm font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90 sm:h-12'
               >
                 Lanjut
-                <ArrowRight className='size-4' />
+                <ArrowRight className='size-4 shrink-0' />
               </Button>
             ) : (
-              <div className='flex flex-col gap-3 sm:flex-row sm:items-stretch'>
+              <div className='grid grid-cols-2 gap-3'>
                 <Button
                   type='button'
                   variant='outline'
                   disabled={isCompleting}
                   onClick={handleBack}
-                  className='h-12 shrink-0 rounded-full border-border px-6 sm:w-auto'
+                  className='h-11 rounded-full border-border px-4 text-sm font-semibold sm:h-12'
                 >
-                  <ArrowLeft className='size-4' />
-                  Back
+                  <ArrowLeft className='size-4 shrink-0' />
+                  Kembali
                 </Button>
                 <Button
                   type='button'
                   disabled={isCompleting}
                   onClick={() => void handleNext()}
-                  className='h-12 flex-1 rounded-full bg-primary-container font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90'
+                  className='h-11 rounded-full bg-primary-container text-sm font-semibold text-primary-foreground shadow-lg shadow-primary-container/30 hover:bg-primary-container/90 sm:h-12'
                 >
                   {step === TOTAL_STEPS
                     ? isCompleting
                       ? 'Menyimpan…'
                       : 'Mulai Ngumpul'
                     : 'Lanjut'}
-                  <ArrowRight className='size-4' />
+                  <ArrowRight className='size-4 shrink-0' />
                 </Button>
               </div>
             )}
 
-            {step === 1 ? (
+            {step === 1 && !import.meta.env.PROD ? (
               <p className='mt-6 text-center text-xs text-muted-foreground'>
                 Butuh bantuan?{' '}
                 <button

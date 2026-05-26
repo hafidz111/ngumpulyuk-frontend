@@ -45,6 +45,7 @@ export function TimeSelectField({
         id={id}
         className={cn(
           APP_SHELL_FORM_SELECT_CLASS,
+          'w-full min-w-0 max-w-full [&>span]:min-w-0 [&>span]:truncate',
           className,
           invalid && 'border-destructive/60',
         )}

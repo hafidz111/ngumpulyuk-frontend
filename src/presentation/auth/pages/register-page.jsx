@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { getAuthErrorMessage } from '@/application/auth/auth-error';
+import { validateRegistrationPassword } from '@/application/auth/validate-registration-password';
 import { authApi } from '@/infrastructure/auth/auth-api';
 import { ROUTES } from '@/shared/config/routes';
 import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
@@ -25,6 +26,12 @@ export default function RegisterPage() {
     const email = String(fd.get('email') ?? '').trim();
     const password = String(fd.get('password') ?? '');
     const confirmPassword = String(fd.get('confirmPassword') ?? '');
+
+    const passwordValidation = validateRegistrationPassword(password);
+    if (!passwordValidation.valid) {
+      setPasswordError(passwordValidation.message ?? 'Kata sandi tidak valid.');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setPasswordError('Konfirmasi kata sandi tidak cocok.');

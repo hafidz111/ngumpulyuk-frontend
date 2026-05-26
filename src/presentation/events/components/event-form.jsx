@@ -28,7 +28,6 @@ import {
   ThemedTextarea,
 } from '@/presentation/components/themed-form-field';
 import { isSameCalendarDay } from '@/presentation/components/time-select-utils';
-import { TimeSelectField } from '@/presentation/components/time-select-field';
 import { Label } from '@/presentation/components/ui/label';
 import {
   APP_SHELL_FORM_PICKER_CLASS,
@@ -63,6 +62,8 @@ import { resolveLocation } from '@/shared/lib/indonesia-locations';
 import { parseCategoriesResponse } from '../lib/parse-categories-response';
 import {
   isEndDateBeforeStart,
+  isStartDateBeforeToday,
+  minStartTimeForDate,
   validateEventSchedule,
 } from '../lib/validate-event-schedule';
 import { MapPicker } from './map-picker';
@@ -83,6 +84,7 @@ const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
  *   onSubmit: (body: Record<string, unknown>) => Promise<void>;
  *   onCancel: () => void;
  *   submitLabel?: string;
+ *   enforceStartNotBeforeNow?: boolean;
  * }} props
  */
 export function EventForm({
@@ -90,9 +92,15 @@ export function EventForm({
   onSubmit,
   onCancel,
   submitLabel = 'Buat Event',
+  enforceStartNotBeforeNow = false,
 }) {
   const fileInputRef = useRef(null);
   const timeInputRef = useRef(null);
+  const endTimeInputRef = useRef(null);
+  const registrationDeadlineTimeInputRef = useRef(null);
+
+  /** Samakan lebar field waktu dengan field lain di mobile. */
+  const timeFieldClass = 'w-full min-w-0 max-w-full cursor-text';
   const [title, setTitle] = useState(initialData.title ?? '');
   const [category, setCategory] = useState(initialData.category ?? '');
   const [description, setDescription] = useState(initialData.description ?? '');
@@ -127,7 +135,6 @@ export function EventForm({
     registrationDeadlineCalendarOpen,
     setRegistrationDeadlineCalendarOpen,
   ] = useState(false);
-  const registrationDeadlineTimeInputRef = useRef(null);
   const [registrationDeadlineTime, setRegistrationDeadlineTime] = useState(
     initialData.registration_deadline_time ?? '',
   );
@@ -269,14 +276,16 @@ export function EventForm({
   }, []);
 
   useEffect(() => {
-    if (!eventDate || !endDate) {
-      setScheduleError('');
-      return;
-    }
     setScheduleError(
-      validateEventSchedule({ eventDate, eventTime, endDate, endTime }) ?? '',
+      validateEventSchedule({
+        eventDate,
+        eventTime,
+        endDate,
+        endTime,
+        enforceStartNotBeforeNow,
+      }) ?? '',
     );
-  }, [eventDate, eventTime, endDate, endTime]);
+  }, [eventDate, eventTime, endDate, endTime, enforceStartNotBeforeNow]);
 
   const sameDaySchedule =
     eventDate && endDate && isSameCalendarDay(eventDate, endDate);
@@ -289,10 +298,22 @@ export function EventForm({
 
   useEffect(() => {
     if (!sameDaySchedule || !eventTime.trim() || !endTime.trim()) return;
-    if (endTime <= eventTime.trim()) {
+    if (endTime < eventTime.trim()) {
       setEndTime('');
     }
   }, [sameDaySchedule, eventTime, endTime]);
+
+  useEffect(() => {
+    if (!enforceStartNotBeforeNow || !eventDate || !eventTime.trim()) return;
+    if (isStartDateBeforeToday(eventDate)) {
+      setEventDate(undefined);
+      return;
+    }
+    const minNow = minStartTimeForDate(eventDate);
+    if (minNow && eventTime.trim() < minNow) {
+      setEventTime('');
+    }
+  }, [enforceStartNotBeforeNow, eventDate, eventTime]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -333,6 +354,7 @@ export function EventForm({
       eventTime,
       endDate,
       endTime,
+      enforceStartNotBeforeNow,
     });
     if (scheduleValidation) {
       setScheduleError(scheduleValidation);
@@ -626,6 +648,10 @@ export function EventForm({
                     className='bg-white'
                     mode='single'
                     selected={eventDate}
+                    disabled={(date) =>
+                      enforceStartNotBeforeNow &&
+                      isBefore(startOfDay(date), startOfDay(new Date()))
+                    }
                     onSelect={(d) => {
                       setEventDate(d);
                       if (
@@ -643,7 +669,7 @@ export function EventForm({
               </Popover>
             </div>
 
-            <div className='space-y-2'>
+            <div className='min-w-0 space-y-2'>
               <Label
                 htmlFor='event-time'
                 className='flex items-center gap-2 text-sm font-bold text-foreground'
@@ -659,7 +685,15 @@ export function EventForm({
                 onChange={(e) => setEventTime(e.target.value)}
                 onClick={() => timeInputRef.current?.showPicker?.()}
                 onFocus={() => timeInputRef.current?.showPicker?.()}
-                className='cursor-text'
+                min={
+                  enforceStartNotBeforeNow
+                    ? minStartTimeForDate(eventDate)
+                    : undefined
+                }
+                className={cn(
+                  timeFieldClass,
+                  scheduleError && 'border-destructive/60',
+                )}
               />
             </div>
           </div>
@@ -713,7 +747,7 @@ export function EventForm({
               </Popover>
             </div>
 
-            <div className='space-y-2'>
+            <div className='min-w-0 space-y-2'>
               <Label
                 htmlFor='event-end-time'
                 className='flex items-center gap-2 text-sm font-bold text-foreground'
@@ -721,31 +755,24 @@ export function EventForm({
                 <Clock className='size-4 text-primary-container' aria-hidden />
                 Waktu Selesai <RequiredMark />
               </Label>
-              {sameDaySchedule ? (
-                <TimeSelectField
-                  id='event-end-time'
-                  value={endTime}
-                  onValueChange={setEndTime}
-                  minExclusive={eventTime.trim() || undefined}
-                  placeholder={
-                    eventTime.trim()
-                      ? 'Pilih jam setelah jam mulai'
-                      : 'Isi jam mulai dulu'
-                  }
-                  invalid={Boolean(scheduleError)}
-                />
-              ) : (
-                <ThemedInput
-                  id='event-end-time'
-                  type='time'
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className={cn(
-                    'cursor-text',
-                    scheduleError && 'border-destructive/60',
-                  )}
-                />
-              )}
+              <ThemedInput
+                ref={endTimeInputRef}
+                id='event-end-time'
+                type='time'
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                onClick={() => endTimeInputRef.current?.showPicker?.()}
+                onFocus={() => endTimeInputRef.current?.showPicker?.()}
+                min={
+                  sameDaySchedule && eventTime.trim()
+                    ? eventTime.trim()
+                    : undefined
+                }
+                className={cn(
+                  timeFieldClass,
+                  scheduleError && 'border-destructive/60',
+                )}
+              />
             </div>
           </div>
 
@@ -819,7 +846,7 @@ export function EventForm({
                   </Popover>
                 </div>
 
-                <div className='space-y-2'>
+                <div className='min-w-0 space-y-2'>
                   <Label
                     htmlFor='registration-deadline-time'
                     className='text-sm font-semibold text-foreground'
@@ -840,7 +867,7 @@ export function EventForm({
                     onFocus={() =>
                       registrationDeadlineTimeInputRef.current?.showPicker?.()
                     }
-                    className='cursor-text'
+                    className={timeFieldClass}
                   />
                 </div>
               </div>

@@ -32,6 +32,7 @@ export default function EventCreatePage() {
           onSubmit={handleCreate}
           onCancel={() => navigate(-1)}
           submitLabel='Buat Event'
+          enforceStartNotBeforeNow
         />
         </div>
       </ChatFirstPageBody>

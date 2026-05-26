@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -21,14 +21,24 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const notice = useMemo(() => {
+  useEffect(() => {
     const fromVerify = location.state?.message;
-    if (typeof fromVerify === 'string' && fromVerify) return fromVerify;
-    if (searchParams.get('session') === 'expired') {
-      return 'Sesi berakhir. Silakan masuk lagi.';
+    if (typeof fromVerify === 'string' && fromVerify.trim()) {
+      toast.success(fromVerify.trim(), { duration: 4000 });
+      navigate(`${location.pathname}${location.search}`, {
+        replace: true,
+        state: null,
+      });
+      return;
     }
-    return null;
-  }, [location.state, searchParams]);
+    if (searchParams.get('session') === 'expired') {
+      toast.info('Sesi berakhir. Silakan masuk lagi.', { duration: 4000 });
+      const next = new URLSearchParams(searchParams);
+      next.delete('session');
+      const qs = next.toString();
+      navigate(`${location.pathname}${qs ? `?${qs}` : ''}`, { replace: true });
+    }
+  }, [location.pathname, location.search, location.state, navigate, searchParams]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -95,7 +105,6 @@ export default function LoginPage() {
       <LoginForm
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
-        notice={notice}
         onGoogleCredential={(cred) => void signInWithGoogleCredential(cred)}
         isGoogleLoading={isGoogleLoading}
       />

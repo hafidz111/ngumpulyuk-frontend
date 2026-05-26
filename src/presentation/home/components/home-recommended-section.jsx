@@ -239,7 +239,7 @@ export function HomeRecommendedSection({ activeEventIds = new Set() }) {
                             'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
                             isJoined
                               ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-100'
-                              : 'bg-muted/40 text-muted-foreground group-hover:bg-[#FFF1E5] group-hover:text-[#FF8000]',
+                              : 'border border-[#FF8000]/30 bg-[#FFF1E5] text-[#FF8000] group-hover:border-[#FF8000]/50 group-hover:bg-[#FF8000] group-hover:text-white',
                           )}
                         >
                           {isJoined ? 'Lihat Detail' : 'Gabung'}{' '}

@@ -14,7 +14,6 @@ import { AUTH_FORM_INPUT_CLASS } from '@/presentation/layout/app-shell-chrome';
 export function LoginForm({
   className,
   isSubmitting,
-  notice,
   onGoogleCredential,
   isGoogleLoading,
   ...props
@@ -30,15 +29,6 @@ export function LoginForm({
               Masuk ke akun NgumpulYuk kamu
             </h1>
           </div>
-
-          {notice ? (
-            <p
-              className='rounded-2xl border border-primary-container/30 bg-primary-container/10 px-4 py-3 text-center text-sm text-foreground'
-              role='status'
-            >
-              {notice}
-            </p>
-          ) : null}
 
           <div className='space-y-5'>
             <div className='space-y-2'>
