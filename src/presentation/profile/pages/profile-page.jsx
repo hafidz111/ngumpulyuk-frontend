@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Calendar,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   LogOut,
   MapPin,
@@ -11,6 +12,8 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
+
+import { mapParticipationSummary } from '@/application/users/map-participation-summary';
 import { toast } from 'sonner';
 
 import { ROUTES } from '@/shared/config/routes';
@@ -33,6 +36,10 @@ import {
 } from '@/presentation/components/skeletons';
 
 const ACTIVITY_LIMIT = 20;
+const CIRCLE_PREVIEW_LIMIT = 4;
+
+const profileListItemClass =
+  'block rounded-xl border border-border/70 bg-background/70 p-3 transition-colors hover:border-[#FF8000]/35 hover:bg-[#FFF1E5]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/40';
 
 function extractPayload(payload) {
   return payload?.data ?? payload;
@@ -103,6 +110,30 @@ function extractEventTitle(activity, eventDetail) {
   return description || 'Event';
 }
 
+function eventDetailPath(eventId) {
+  const id = String(eventId ?? '').trim();
+  if (!id) return null;
+  return ROUTES.eventDetail.replace(':id', id);
+}
+
+function communityDetailPath(communityId) {
+  const id = String(communityId ?? '').trim();
+  if (!id) return null;
+  return ROUTES.communityDetail.replace(':id', id);
+}
+
+function formatEventSchedule(detail) {
+  if (!detail) return null;
+  const date = detail.event_date || detail.start_date;
+  if (!date) return null;
+  const parts = [formatDate(date)];
+  const time = detail.event_time || detail.start_time;
+  if (time) parts.push(String(time).slice(0, 5));
+  const loc = detail.location_area || detail.location || detail.area;
+  if (loc) parts.push(String(loc));
+  return parts.join(' · ');
+}
+
 function isUpcomingEvent(eventDetail) {
   if (!eventDetail) return false;
   const status = String(eventDetail.status || '').toLowerCase();
@@ -131,6 +162,8 @@ export default function ProfilePage() {
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activitiesLoadingMore, setActivitiesLoadingMore] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState({});
+  const [joinedCircles, setJoinedCircles] = useState([]);
+  const [circlesLoading, setCirclesLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({
     full_name: '',
@@ -191,6 +224,28 @@ export default function ProfilePage() {
       fetchActivities(0, false);
     }
   }, [isPublicProfile, fetchActivities]);
+
+  useEffect(() => {
+    if (isPublicProfile) return undefined;
+    let active = true;
+    setCirclesLoading(true);
+    usersApi
+      .participationSummary()
+      .then((res) => {
+        if (!active) return;
+        const { communities } = mapParticipationSummary(res.data);
+        setJoinedCircles(communities);
+      })
+      .catch(() => {
+        if (active) setJoinedCircles([]);
+      })
+      .finally(() => {
+        if (active) setCirclesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isPublicProfile]);
 
   async function handleSave() {
     setSaving(true);
@@ -289,6 +344,12 @@ export default function ProfilePage() {
     }),
     [eventParticipationActivities, relatedEvents],
   );
+
+  const previewCircles = useMemo(
+    () => joinedCircles.slice(0, CIRCLE_PREVIEW_LIMIT),
+    [joinedCircles],
+  );
+  const hasMoreCircles = joinedCircles.length > CIRCLE_PREVIEW_LIMIT;
 
   const profileTitle = loading
     ? SHELL_COPY.pages.profileLoadingTitle
@@ -452,7 +513,9 @@ export default function ProfilePage() {
               <div className='grid gap-4 md:grid-cols-2'>
                 <Card className='border border-border/80 bg-card p-5'>
                   <div className='flex items-center justify-between gap-3'>
-                    <h2 className='text-base font-semibold text-foreground'>Akan Datang</h2>
+                    <h2 className='text-base font-semibold text-foreground'>
+                      {SHELL_COPY.pages.profileUpcomingEvents}
+                    </h2>
                     <span className='rounded-full bg-primary-container/15 px-3 py-1 text-xs font-semibold text-primary-container'>
                       {upcomingFollowedEvents.length}
                     </span>
@@ -465,14 +528,38 @@ export default function ProfilePage() {
                     <div className='mt-4 space-y-2.5'>
                       {upcomingFollowedEvents.map((activity) => {
                         const eventId = String(activity.related_id || '');
-                        return (
-                          <div key={activity.id} className='rounded-xl border border-border/70 bg-background/70 p-3'>
-                            <p className='text-sm font-medium text-foreground'>
-                              {extractEventTitle(activity, relatedEvents[eventId])}
-                            </p>
-                            <p className='mt-1 text-xs text-muted-foreground'>
-                              {formatDateTime(activity.created_at)}
-                            </p>
+                        const detail = relatedEvents[eventId];
+                        const title = extractEventTitle(activity, detail);
+                        const subtitle =
+                          formatEventSchedule(detail) ||
+                          `Diikuti ${formatDateTime(activity.created_at)}`;
+                        const to = eventDetailPath(eventId);
+                        const content = (
+                          <>
+                            <div className='flex items-start justify-between gap-2'>
+                              <p className='text-sm font-medium text-foreground'>{title}</p>
+                              {to ? (
+                                <ChevronRight
+                                  className='size-4 shrink-0 text-muted-foreground'
+                                  aria-hidden
+                                />
+                              ) : null}
+                            </div>
+                            <p className='mt-1 text-xs text-muted-foreground'>{subtitle}</p>
+                          </>
+                        );
+                        return to ? (
+                          <Link
+                            key={activity.id}
+                            to={to}
+                            className={profileListItemClass}
+                            aria-label={`${SHELL_COPY.pages.profileOpenEvent}: ${title}`}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <div key={activity.id} className={profileListItemClass}>
+                            {content}
                           </div>
                         );
                       })}
@@ -482,7 +569,9 @@ export default function ProfilePage() {
 
                 <Card className='border border-border/80 bg-card p-5'>
                   <div className='flex items-center justify-between gap-3'>
-                    <h2 className='text-base font-semibold text-foreground'>Riwayat Event yang Diikuti</h2>
+                    <h2 className='text-base font-semibold text-foreground'>
+                      {SHELL_COPY.pages.profileEventHistory}
+                    </h2>
                     <span className='rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground'>
                       {historyFollowedEvents.length}
                     </span>
@@ -495,19 +584,130 @@ export default function ProfilePage() {
                     <div className='mt-4 space-y-2.5'>
                       {historyFollowedEvents.map((activity) => {
                         const eventId = String(activity.related_id || '');
-                        return (
-                          <div key={activity.id} className='rounded-xl border border-border/70 bg-background/70 p-3'>
-                            <p className='text-sm font-medium text-foreground'>
-                              {extractEventTitle(activity, relatedEvents[eventId])}
-                            </p>
-                            <p className='mt-1 text-xs text-muted-foreground'>
-                              {formatDateTime(activity.created_at)}
-                            </p>
+                        const detail = relatedEvents[eventId];
+                        const title = extractEventTitle(activity, detail);
+                        const subtitle =
+                          formatEventSchedule(detail) ||
+                          `Diikuti ${formatDateTime(activity.created_at)}`;
+                        const to = eventDetailPath(eventId);
+                        const content = (
+                          <>
+                            <div className='flex items-start justify-between gap-2'>
+                              <p className='text-sm font-medium text-foreground'>{title}</p>
+                              {to ? (
+                                <ChevronRight
+                                  className='size-4 shrink-0 text-muted-foreground'
+                                  aria-hidden
+                                />
+                              ) : null}
+                            </div>
+                            <p className='mt-1 text-xs text-muted-foreground'>{subtitle}</p>
+                          </>
+                        );
+                        return to ? (
+                          <Link
+                            key={activity.id}
+                            to={to}
+                            className={profileListItemClass}
+                            aria-label={`${SHELL_COPY.pages.profileOpenEvent}: ${title}`}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <div key={activity.id} className={profileListItemClass}>
+                            {content}
                           </div>
                         );
                       })}
                     </div>
                   )}
+                </Card>
+
+                <Card className='border border-border/80 bg-card p-5 md:col-span-2'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <h2 className='text-base font-semibold text-foreground'>
+                      {SHELL_COPY.pages.profileMyCircles}
+                    </h2>
+                    <div className='flex items-center gap-2'>
+                      <span className='rounded-full bg-primary-container/15 px-3 py-1 text-xs font-semibold text-primary-container'>
+                        {joinedCircles.length}
+                      </span>
+                      {joinedCircles.length > 0 ? (
+                        <Button
+                          asChild
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          className='h-8 rounded-full px-2 text-xs font-semibold text-[#FF8000] hover:text-[#FF8000]'
+                        >
+                          <Link to={ROUTES.community}>
+                            {SHELL_COPY.pages.profileSeeAllCircles}
+                            <ChevronRight className='size-3.5' aria-hidden />
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {circlesLoading ? (
+                    <ListRowsSkeleton rows={2} className='mt-4' />
+                  ) : joinedCircles.length === 0 ? (
+                    <p className='py-8 text-sm text-muted-foreground'>
+                      {SHELL_COPY.pages.profileNoCircles}{' '}
+                      <Link
+                        to={ROUTES.community}
+                        className='font-semibold text-[#FF8000] hover:underline'
+                      >
+                        Jelajahi circle
+                      </Link>
+                    </p>
+                  ) : (
+                    <div className='mt-4 grid gap-2.5 sm:grid-cols-2'>
+                      {previewCircles.map((circle) => {
+                        const to = communityDetailPath(circle.id);
+                        const content = (
+                          <>
+                            <div className='flex items-start justify-between gap-2'>
+                              <p className='text-sm font-medium text-foreground'>{circle.name}</p>
+                              {to ? (
+                                <ChevronRight
+                                  className='size-4 shrink-0 text-muted-foreground'
+                                  aria-hidden
+                                />
+                              ) : null}
+                            </div>
+                            <p className='mt-1 text-xs text-muted-foreground'>
+                              {SHELL_COPY.pages.profileOpenCircle}
+                            </p>
+                          </>
+                        );
+                        return to ? (
+                          <Link
+                            key={circle.id}
+                            to={to}
+                            className={profileListItemClass}
+                            aria-label={`${SHELL_COPY.pages.profileOpenCircle}: ${circle.name}`}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <div key={circle.id} className={profileListItemClass}>
+                            {content}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {hasMoreCircles ? (
+                    <p className='mt-3 text-center text-xs text-muted-foreground'>
+                      +{joinedCircles.length - CIRCLE_PREVIEW_LIMIT} circle lainnya —{' '}
+                      <Link
+                        to={ROUTES.community}
+                        className='font-semibold text-[#FF8000] hover:underline'
+                      >
+                        {SHELL_COPY.pages.profileSeeAllCircles}
+                      </Link>
+                    </p>
+                  ) : null}
                 </Card>
 
                 {canLoadMoreActivities ? (
