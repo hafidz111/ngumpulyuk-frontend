@@ -34,6 +34,12 @@ function isCredentialAuthRequest(url) {
 }
 
 apiClient.interceptors.request.use((config) => {
+  const url = String(config.url ?? '');
+  // Jangan kirim Bearer ke login/register — token lama/kedaluwarsa bikin backend 401
+  // sebelum kredensial diproses ("Given token not valid for any token type").
+  if (isCredentialAuthRequest(url)) {
+    return config;
+  }
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

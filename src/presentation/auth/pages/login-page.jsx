@@ -6,14 +6,16 @@ import { getAuthErrorMessage } from '@/application/auth/auth-error';
 import { isEmailNotVerifiedLoginError } from '@/application/auth/is-email-not-verified-error';
 import { mapLoginResponse } from '@/application/auth/map-auth-response';
 import { authApi } from '@/infrastructure/auth/auth-api';
+import { clearAllAuthStorage } from '@/infrastructure/http/token-storage';
 import { LoginForm } from '../../components/login-form';
 import { ROUTES } from '../../../shared/config/routes';
 import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
 import { useAuth } from '../hooks/use-auth';
 import { useGoogleAuthSubmit } from '../hooks/use-google-auth-submit';
 import { AuthSplitLayout } from '../components/auth-split-layout';
+import { GuestOnlyRoute } from '../components/guest-only-route';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { setSession } = useAuth();
   const { signInWithGoogleCredential, isGoogleLoading } = useGoogleAuthSubmit();
   const navigate = useNavigate();
@@ -46,6 +48,7 @@ export default function LoginPage() {
     const email = String(fd.get('email') ?? '').trim();
     const password = String(fd.get('password') ?? '');
     setIsSubmitting(true);
+    clearAllAuthStorage();
     try {
       const { data } = await authApi.login({ email, password });
       const mapped = mapLoginResponse(
@@ -109,5 +112,13 @@ export default function LoginPage() {
         isGoogleLoading={isGoogleLoading}
       />
     </AuthSplitLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <GuestOnlyRoute>
+      <LoginPageContent />
+    </GuestOnlyRoute>
   );
 }

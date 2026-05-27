@@ -10,8 +10,9 @@ import { PENDING_VERIFICATION_EMAIL_KEY } from '@/shared/config/storage-keys';
 import { AuthSplitLayout } from '../components/auth-split-layout';
 import { useGoogleAuthSubmit } from '../hooks/use-google-auth-submit';
 import { SignupForm } from '../../components/signup-form';
+import { GuestOnlyRoute } from '../components/guest-only-route';
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const navigate = useNavigate();
   const { signInWithGoogleCredential, isGoogleLoading } = useGoogleAuthSubmit();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,5 +72,13 @@ export default function RegisterPage() {
         isGoogleLoading={isGoogleLoading}
       />
     </AuthSplitLayout>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <GuestOnlyRoute>
+      <RegisterPageContent />
+    </GuestOnlyRoute>
   );
 }

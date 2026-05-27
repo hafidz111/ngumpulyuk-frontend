@@ -12,6 +12,8 @@ const AUTH_MESSAGE_ID = {
   'passwords do not match': 'Konfirmasi kata sandi tidak cocok.',
   'token is invalid or has expired':
     'Sesi tidak valid atau sudah berakhir. Silakan masuk lagi.',
+  'given token not valid for any token type':
+    'Sesi tidak valid atau sudah berakhir. Silakan masuk lagi.',
   'credentials is valid': 'Sesi masih aktif.',
   'could not verify user': 'Gagal verifikasi akun Google. Coba lagi.',
   'validation error': 'Data tidak valid. Periksa isian kamu.',
@@ -53,7 +55,10 @@ export function translateAuthMessage(message) {
   if (lower.includes('not verified')) {
     return AUTH_MESSAGE_ID['email is not verified'];
   }
-  if (lower.includes('invalid') && lower.includes('token')) {
+  if (
+    lower.includes('given token not valid') ||
+    (lower.includes('invalid') && lower.includes('token'))
+  ) {
     return AUTH_MESSAGE_ID['token is invalid or has expired'];
   }
   if (
