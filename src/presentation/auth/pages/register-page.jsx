@@ -15,11 +15,9 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { signInWithGoogleCredential, isGoogleLoading } = useGoogleAuthSubmit();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setPasswordError('');
 
     const fd = new FormData(e.currentTarget);
     const full_name = String(fd.get('full_name') ?? '').trim();
@@ -29,12 +27,16 @@ export default function RegisterPage() {
 
     const passwordValidation = validateRegistrationPassword(password);
     if (!passwordValidation.valid) {
-      setPasswordError(passwordValidation.message ?? 'Kata sandi tidak valid.');
+      toast.error(passwordValidation.message ?? 'Kata sandi tidak valid.', {
+        duration: 4000,
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      setPasswordError('Konfirmasi kata sandi tidak cocok.');
+      toast.error('Konfirmasi kata sandi tidak cocok.', {
+        duration: 4000,
+      });
       return;
     }
 
@@ -65,7 +67,6 @@ export default function RegisterPage() {
       <SignupForm
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
-        passwordError={passwordError}
         onGoogleCredential={(cred) => void signInWithGoogleCredential(cred)}
         isGoogleLoading={isGoogleLoading}
       />

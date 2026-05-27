@@ -46,7 +46,6 @@ function TermsNotice() {
 
 /**
  * @param {import('react').ComponentProps<'form'> & {
- *   passwordError?: string;
  *   isSubmitting?: boolean;
  *   onGoogleCredential?: (jwt: string) => void;
  *   isGoogleLoading?: boolean;
@@ -55,7 +54,6 @@ function TermsNotice() {
  */
 export function SignupForm({
   className,
-  passwordError,
   isSubmitting,
   onSubmit,
   onGoogleCredential,
@@ -200,9 +198,6 @@ export function SignupForm({
                     )}
                   </button>
                 </div>
-                <p className='text-xs text-muted-foreground'>
-                  Minimal 8 karakter, huruf kapital, huruf kecil, dan angka.
-                </p>
               </div>
 
               <div className='space-y-2'>
@@ -243,11 +238,6 @@ export function SignupForm({
                 </div>
               </div>
 
-              {passwordError ? (
-                <p className='text-sm text-destructive md:col-span-2'>
-                  {passwordError}
-                </p>
-              ) : null}
             </div>
           </div>
 
