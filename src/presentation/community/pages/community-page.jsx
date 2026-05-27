@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MessageCircle,
@@ -34,10 +34,20 @@ import {
 const LIMIT = 12;
 const FEED_LIMIT = 10;
 
-const TAB_ITEMS = [
-  { id: 'threads', label: SHELL_COPY.pages.communityTabFeed, icon: MessageCircle },
-  { id: 'communities', label: SHELL_COPY.pages.communityTabCircles, icon: Users },
-];
+function mergeJoinedCirclesWithList(joined = [], list = []) {
+  const listById = new Map(list.map((c) => [String(c.id), c]));
+  return joined.map((j) => {
+    const fromList = listById.get(String(j.id));
+    return {
+      ...j,
+      ...fromList,
+      id: String(j.id),
+      name: fromList?.name ?? j.name,
+      is_member: true,
+      is_joined: true,
+    };
+  });
+}
 
 function extractCollection(payload) {
   const data = payload?.data ?? payload;
@@ -83,6 +93,8 @@ export default function CommunityPage() {
 
   const [communities, setCommunities] = useState([]);
   const [composerCommunities, setComposerCommunities] = useState([]);
+  /** @type {[Array<Record<string, unknown>>, Function]} */
+  const [myJoinedCircles, setMyJoinedCircles] = useState([]);
   const [composerEvents, setComposerEvents] = useState([]);
   const [myUpcomingEventsCount, setMyUpcomingEventsCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -159,12 +171,25 @@ export default function CommunityPage() {
     try {
       const res = await usersApi.participationSummary();
       const { communities, events, activeEventsCount } = mapParticipationSummary(res.data);
+      const root = res.data?.data ?? res.data;
+      const joinedRaw = Array.isArray(root?.joined_communities)
+        ? root.joined_communities
+        : [];
       setComposerCommunities(communities);
       setComposerEvents(events);
       setMyUpcomingEventsCount(activeEventsCount);
+      setMyJoinedCircles(
+        joinedRaw.map((item) => ({
+          id: String(item?.id ?? ''),
+          name: String(item?.title ?? item?.name ?? 'Circle'),
+          is_member: true,
+          is_joined: true,
+        })).filter((item) => item.id),
+      );
     } catch {
       setComposerCommunities([]);
       setComposerEvents([]);
+      setMyJoinedCircles([]);
       setMyUpcomingEventsCount(0);
     }
   }, []);
@@ -330,8 +355,30 @@ export default function CommunityPage() {
     fetchCommunities(0);
   }
 
-  const joinedCommunities = communities.filter(isJoinedCommunity);
-  const exploreCommunities = communities.filter((c) => !isJoinedCommunity(c));
+  const tabItems = useMemo(() => {
+    const circleLabel =
+      myJoinedCircles.length > 0
+        ? `${SHELL_COPY.pages.communityTabCircles} (${myJoinedCircles.length})`
+        : SHELL_COPY.pages.communityTabCircles;
+    return [
+      { id: 'threads', label: SHELL_COPY.pages.communityTabFeed, icon: MessageCircle },
+      { id: 'communities', label: circleLabel, icon: Users },
+    ];
+  }, [myJoinedCircles.length]);
+
+  const joinedIds = useMemo(
+    () => new Set(myJoinedCircles.map((c) => String(c.id))),
+    [myJoinedCircles],
+  );
+
+  const joinedCommunities = useMemo(
+    () => mergeJoinedCirclesWithList(myJoinedCircles, communities),
+    [myJoinedCircles, communities],
+  );
+
+  const exploreCommunities = communities.filter(
+    (c) => !joinedIds.has(String(c.id)) && !isJoinedCommunity(c),
+  );
 
   return (
     <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
@@ -365,7 +412,7 @@ export default function CommunityPage() {
         <Tabs
           value={tab}
           onChange={setTab}
-          items={TAB_ITEMS}
+          items={tabItems}
           className='mb-8'
         />
 
@@ -469,16 +516,25 @@ export default function CommunityPage() {
               </div>
             ) : (
               <>
-                {!search && joinedCommunities.length > 0 ? (
+                {!search ? (
                   <section className='space-y-4'>
                     <h2 className='font-display text-base font-bold text-foreground md:text-lg'>
                       {SHELL_COPY.pages.communityJoinedSection}
+                      {joinedCommunities.length > 0
+                        ? ` (${joinedCommunities.length})`
+                        : ''}
                     </h2>
-                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                      {joinedCommunities.map((c) => (
-                        <CommunityCard key={c.id} community={c} />
-                      ))}
-                    </div>
+                    {joinedCommunities.length > 0 ? (
+                      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                        {joinedCommunities.map((c) => (
+                          <CommunityCard key={c.id} community={c} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className='rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground'>
+                        {SHELL_COPY.pages.communityJoinedEmpty}
+                      </p>
+                    )}
                   </section>
                 ) : null}
 

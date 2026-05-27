@@ -23,7 +23,14 @@ function extractCollection(payload) {
   return [];
 }
 
-export function ManageAdminsModal({ open, onClose, communityId, admins = [], onPromoted }) {
+export function ManageAdminsModal({
+  open,
+  onClose,
+  communityId,
+  creatorUserId = null,
+  admins = [],
+  onPromoted,
+}) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,7 +104,10 @@ export function ManageAdminsModal({ open, onClose, communityId, admins = [], onP
           <div className='space-y-2'>
             {admins.map((admin) => {
               const user = admin.user ?? admin;
-              const isOwner = admin.role === 'owner';
+              const isOwner =
+                admin.role === 'owner' ||
+                (creatorUserId &&
+                  String(user.id) === String(creatorUserId));
               return (
                 <div
                   key={user.id}

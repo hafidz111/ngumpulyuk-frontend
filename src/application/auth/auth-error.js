@@ -28,6 +28,8 @@ const AUTH_MESSAGE_ID = {
 const AUTH_CODE_ID = {
   UNAUTHORIZED: 'Akses ditolak. Silakan masuk lagi.',
   FORBIDDEN: 'Kamu tidak punya izin untuk aksi ini.',
+  CREATOR_CANNOT_LEAVE:
+    'Pembuat circle tidak bisa keluar. Hapus circle jika ingin menutup komunitas.',
   NOT_FOUND: 'Data tidak ditemukan.',
   CONFLICT: 'Permintaan bentrok dengan data yang ada.',
   VALIDATION_ERROR: 'Data tidak valid. Periksa isian kamu.',

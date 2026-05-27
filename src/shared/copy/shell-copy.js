@@ -65,7 +65,9 @@ export const SHELL_COPY = {
       'Yuk bikin circle pertama, spill vibes kamu ke sini',
     communityEmptySearch: 'Gak ketemu, coba kata kunci lain ya',
     communityHubHint:
-      'Spill di obrolan atau join circle baru. Tinggal pilih tab.',
+      'Spill di obrolan atau join circle baru. Circle kamu ada di tab Circle.',
+    communityJoinedEmpty:
+      'Kamu belum join circle. Pilih "Explore circle" di bawah atau buat circle sendiri.',
     communityTabFeed: 'Obrolan',
     communityTabCircles: 'Circle',
     communityFeedTitle: 'Update circle',
@@ -77,6 +79,9 @@ export const SHELL_COPY = {
     communityDetailMembers: (n) => `${n} anggota`,
     communityDetailJoin: 'Gabung',
     communityDetailLeave: 'Keluar',
+    communityDetailDelete: 'Hapus circle',
+    communityDetailOwnerLeaveHint:
+      'Sebagai pembuat circle, kamu tidak bisa sekadar keluar. Hapus circle untuk menutup komunitas ini.',
     communityDetailThreads: 'Diskusi',
     communityDetailThreadsEmpty: 'Belum ada diskusi.',
     communityDetailThreadsEmptyJoined: 'Belum ada diskusi. Spill duluan!',

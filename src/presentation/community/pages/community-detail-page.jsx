@@ -90,9 +90,14 @@ export default function CommunityDetailPage() {
   const isCreator =
     String(community?.created_by?.id ?? community?.creator?.id ?? community?.owner?.id ?? '') ===
     String(user?.id ?? '');
-  const currentRole = currentMembership?.role ?? community?.my_role ?? (isCreator ? 'owner' : null);
-  const isOwner = currentRole === 'owner';
-  const isAdmin = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'moderator';
+  const currentRole =
+    community?.user_role ??
+    currentMembership?.role ??
+    community?.my_role ??
+    (isCreator ? 'owner' : null);
+  const isOwner = isCreator || currentRole === 'owner';
+  const isAdmin =
+    isOwner || currentRole === 'admin' || currentRole === 'moderator';
 
   const fetchCommunity = useCallback(async () => {
     setLoading(true);
@@ -453,16 +458,19 @@ export default function CommunityDetailPage() {
                 <Button
                   type='button'
                   variant='ghost'
-                  onClick={() => setConfirmType('owner-leave-community')}
+                  onClick={() => setConfirmType('delete-community')}
                   disabled={confirmLoading}
-                  className={cn('shrink-0 px-5', APP_SHELL_SECONDARY_BUTTON_CLASS)}
+                  className={cn(
+                    'shrink-0 px-5 text-destructive hover:bg-destructive/10 hover:text-destructive',
+                    APP_SHELL_SECONDARY_BUTTON_CLASS,
+                  )}
                 >
-                  {confirmLoading && confirmType === 'owner-leave-community' ? (
+                  {confirmLoading && confirmType === 'delete-community' ? (
                     <ButtonBusySkeleton />
                   ) : (
                     <LogOut className='size-4' />
                   )}
-                  {SHELL_COPY.pages.communityDetailLeave}
+                  Hapus circle
                 </Button>
               ) : (
                 <Button
@@ -559,6 +567,11 @@ export default function CommunityDetailPage() {
         open={manageOpen}
         onClose={setManageOpen}
         communityId={id}
+        creatorUserId={
+          community?.creator?.id ??
+          community?.created_by?.id ??
+          community?.owner?.id
+        }
         admins={admins}
         onPromoted={() => {
           fetchMembers();
@@ -586,8 +599,9 @@ export default function CommunityDetailPage() {
             ? 'Gabung komunitas ini?'
             : confirmType === 'leave-community'
               ? 'Keluar dari komunitas ini?'
-              : confirmType === 'owner-leave-community'
-                ? 'Kamu adalah creator komunitas'
+              : confirmType === 'owner-leave-community' ||
+                  confirmType === 'delete-community'
+                ? 'Hapus circle ini?'
                 : 'Hapus komunitas ini?'
         }
         description={
@@ -595,8 +609,10 @@ export default function CommunityDetailPage() {
             ? 'Kamu akan menjadi anggota komunitas dan bisa ikut diskusi.'
             : confirmType === 'leave-community'
               ? 'Kamu tidak bisa posting thread sampai gabung kembali.'
-              : confirmType === 'owner-leave-community'
-                ? 'Creator tidak bisa keluar dari komunitas. Untuk keluar, kamu harus menghapus komunitas ini.'
+              : confirmType === 'owner-leave-community' ||
+                  confirmType === 'delete-community'
+                ? SHELL_COPY.pages.communityDetailOwnerLeaveHint +
+                  ' Semua thread dan data akan hilang permanen.'
                 : 'Semua thread dan data komunitas akan hilang permanen.'
         }
         confirmLabel={
@@ -604,14 +620,20 @@ export default function CommunityDetailPage() {
             ? 'Ya, gabung'
             : confirmType === 'leave-community'
               ? 'Ya, keluar'
-              : confirmType === 'owner-leave-community'
-                ? 'Hapus komunitas'
+              : confirmType === 'owner-leave-community' ||
+                  confirmType === 'delete-community'
+                ? SHELL_COPY.pages.communityDetailDelete
               : 'Ya, hapus komunitas'
         }
         onConfirm={() => {
           if (confirmType === 'join-community') handleJoin();
           else if (confirmType === 'leave-community') handleLeave();
-          else handleDeleteCommunity();
+          else if (
+            confirmType === 'delete-community' ||
+            confirmType === 'owner-leave-community'
+          ) {
+            handleDeleteCommunity();
+          }
         }}
         loading={confirmLoading}
         destructive={confirmType === 'delete-community' || confirmType === 'owner-leave-community'}
