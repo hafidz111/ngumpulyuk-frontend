@@ -19,7 +19,6 @@ import { toast } from 'sonner';
 import { ROUTES } from '@/shared/config/routes';
 import { SHELL_COPY } from '@/shared/copy/shell-copy';
 import { usersApi } from '@/infrastructure/users/users-api';
-import { eventsApi } from '@/infrastructure/events/events-api';
 import { useAuth } from '@/presentation/auth/hooks/use-auth';
 import { ChatFirstPageBody } from '@/presentation/layout/chat-first-page-body';
 import { ChatFirstPageHeader } from '@/presentation/layout/chat-first-page-header';
@@ -163,7 +162,7 @@ export default function ProfilePage() {
   const [activitiesLoadingMore, setActivitiesLoadingMore] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState({});
   const [joinedCircles, setJoinedCircles] = useState([]);
-  const [circlesLoading, setCirclesLoading] = useState(false);
+  const [participationLoading, setParticipationLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({
     full_name: '',
@@ -228,19 +227,23 @@ export default function ProfilePage() {
   useEffect(() => {
     if (isPublicProfile) return undefined;
     let active = true;
-    setCirclesLoading(true);
+    setParticipationLoading(true);
     usersApi
       .participationSummary()
       .then((res) => {
         if (!active) return;
-        const { communities } = mapParticipationSummary(res.data);
+        const { communities, eventsById } = mapParticipationSummary(res.data);
         setJoinedCircles(communities);
+        setRelatedEvents(eventsById);
       })
       .catch(() => {
-        if (active) setJoinedCircles([]);
+        if (active) {
+          setJoinedCircles([]);
+          setRelatedEvents({});
+        }
       })
       .finally(() => {
-        if (active) setCirclesLoading(false);
+        if (active) setParticipationLoading(false);
       });
     return () => {
       active = false;
@@ -286,48 +289,7 @@ export default function ProfilePage() {
     });
   }, [activities]);
 
-  useEffect(() => {
-    const joinedIds = Array.from(
-      new Set(
-        eventParticipationActivities
-          .map((item) => String(item.related_id || ''))
-          .filter(Boolean),
-      ),
-    );
-    if (joinedIds.length === 0) {
-      setRelatedEvents({});
-      return;
-    }
-
-    let active = true;
-    async function loadRelatedEvents() {
-      try {
-        const results = await Promise.all(
-          joinedIds.map(async (eventId) => {
-            try {
-              const res = await eventsApi.getById(eventId);
-              return [eventId, extractPayload(res.data)];
-            } catch {
-              return [eventId, null];
-            }
-          }),
-        );
-        if (!active) return;
-        const next = {};
-        results.forEach(([eventId, detail]) => {
-          next[eventId] = detail;
-        });
-        setRelatedEvents(next);
-      } catch {
-        if (active) setRelatedEvents({});
-      }
-    }
-
-    loadRelatedEvents();
-    return () => {
-      active = false;
-    };
-  }, [eventParticipationActivities]);
+  const eventSectionsLoading = activitiesLoading || participationLoading;
 
   const upcomingFollowedEvents = useMemo(
     () => eventParticipationActivities.filter((activity) => {
@@ -520,7 +482,7 @@ export default function ProfilePage() {
                       {upcomingFollowedEvents.length}
                     </span>
                   </div>
-                  {activitiesLoading ? (
+                  {eventSectionsLoading ? (
                     <ListRowsSkeleton rows={3} className='mt-4' />
                   ) : upcomingFollowedEvents.length === 0 ? (
                     <p className='py-8 text-sm text-muted-foreground'>Belum ada event akan datang.</p>
@@ -552,6 +514,7 @@ export default function ProfilePage() {
                           <Link
                             key={activity.id}
                             to={to}
+                            state={detail ? { preview: detail } : undefined}
                             className={profileListItemClass}
                             aria-label={`${SHELL_COPY.pages.profileOpenEvent}: ${title}`}
                           >
@@ -576,7 +539,7 @@ export default function ProfilePage() {
                       {historyFollowedEvents.length}
                     </span>
                   </div>
-                  {activitiesLoading ? (
+                  {eventSectionsLoading ? (
                     <ListRowsSkeleton rows={3} className='mt-4' />
                   ) : historyFollowedEvents.length === 0 ? (
                     <p className='py-8 text-sm text-muted-foreground'>Belum ada riwayat event.</p>
@@ -608,6 +571,7 @@ export default function ProfilePage() {
                           <Link
                             key={activity.id}
                             to={to}
+                            state={detail ? { preview: detail } : undefined}
                             className={profileListItemClass}
                             aria-label={`${SHELL_COPY.pages.profileOpenEvent}: ${title}`}
                           >
@@ -648,7 +612,7 @@ export default function ProfilePage() {
                       ) : null}
                     </div>
                   </div>
-                  {circlesLoading ? (
+                  {participationLoading ? (
                     <ListRowsSkeleton rows={2} className='mt-4' />
                   ) : joinedCircles.length === 0 ? (
                     <p className='py-8 text-sm text-muted-foreground'>

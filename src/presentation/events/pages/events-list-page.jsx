@@ -100,6 +100,9 @@ export default function EventsListPage() {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  /** Filter yang dikirim ke API (submit search / ubah kategori). */
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [appliedCategory, setAppliedCategory] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [upcoming, setUpcoming] = useState({
@@ -119,11 +122,11 @@ export default function EventsListPage() {
   const buildParams = useCallback(
     (status, offset, sort) => {
       const params = { limit: LIMIT, offset, status, sort };
-      if (search.trim()) params.search = search.trim();
-      if (category && category !== ' ') params.category = category;
+      if (appliedSearch.trim()) params.search = appliedSearch.trim();
+      if (appliedCategory && appliedCategory !== ' ') params.category = appliedCategory;
       return params;
     },
-    [search, category],
+    [appliedSearch, appliedCategory],
   );
 
   const fetchSection = useCallback(
@@ -155,27 +158,14 @@ export default function EventsListPage() {
     [buildParams],
   );
 
-  const reloadUpcoming = useCallback(() => {
+  const reloadAll = useCallback(() => {
     void fetchSection('upcoming', 0, 'date_asc', setUpcoming);
-  }, [fetchSection]);
-
-  const reloadPast = useCallback(() => {
     void fetchSection('past', 0, 'date_desc', setPast);
   }, [fetchSection]);
 
-  const reloadAll = useCallback(() => {
-    reloadUpcoming();
-    setPast({ events: [], total: 0, offset: 0, loading: false, loaded: false });
-  }, [reloadUpcoming]);
-
   useEffect(() => {
-    reloadUpcoming();
-  }, [reloadUpcoming]);
-
-  useEffect(() => {
-    if (upcoming.loading || past.loaded) return;
-    reloadPast();
-  }, [upcoming.loading, past.loaded, reloadPast]);
+    reloadAll();
+  }, [reloadAll]);
 
   useEffect(() => {
     let active = true;
@@ -197,17 +187,35 @@ export default function EventsListPage() {
 
   function handleSearch(e) {
     e.preventDefault();
-    reloadAll();
+    setAppliedSearch(search.trim());
+    setAppliedCategory(category && category !== ' ' ? category : '');
+  }
+
+  function handleCategoryChange(value) {
+    setCategory(value);
+    setAppliedCategory(value && value !== ' ' ? value : '');
   }
 
   function clearFilters() {
     setSearch('');
     setCategory('');
+    setAppliedSearch('');
+    setAppliedCategory('');
   }
 
-  const hasActiveFilters = category || search;
+  const hasActiveFilters =
+    Boolean(appliedSearch.trim()) ||
+    Boolean(appliedCategory && appliedCategory !== ' ');
+  const hasPendingFilters =
+    search.trim() !== appliedSearch.trim() ||
+    (category && category !== ' ' ? category : '') !== appliedCategory;
   const eventCategories = useMemo(() => categoryOptions, [categoryOptions]);
-  const pageLoading = upcoming.loading && upcoming.events.length === 0;
+  const pageLoading =
+    !hasActiveFilters &&
+    upcoming.loading &&
+    upcoming.events.length === 0 &&
+    past.loading &&
+    past.events.length === 0;
 
   return (
     <div className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
@@ -238,7 +246,7 @@ export default function EventsListPage() {
               >
                 <Filter className='size-4' />
                 <span className='hidden sm:inline'>Filter</span>
-                {hasActiveFilters ? (
+                {hasActiveFilters || hasPendingFilters ? (
                   <span
                     className={cn(
                       'ml-1 flex size-5 items-center justify-center rounded-full text-[0.6rem] font-bold',
@@ -256,7 +264,7 @@ export default function EventsListPage() {
             <div className='absolute right-0 top-[56px] w-[300px] rounded-3xl border border-border/60 bg-white p-5 shadow-xl md:w-[320px]'>
               <div className='space-y-1.5'>
                 <label className='text-base font-bold text-[#1A1A1A]'>Kategori</label>
-                <Select value={category} onValueChange={setCategory}>
+                <Select value={category} onValueChange={handleCategoryChange}>
                   <SelectTrigger className='h-12 rounded-2xl border-border bg-white text-sm'>
                     <SelectValue placeholder='Semua' />
                   </SelectTrigger>
@@ -333,7 +341,11 @@ export default function EventsListPage() {
               loading={past.loading}
               total={past.total}
               offset={past.offset}
-              emptyHint={SHELL_COPY.pages.explorePastEmpty}
+              emptyHint={
+                hasActiveFilters
+                  ? SHELL_COPY.pages.explorePastEmptyFiltered
+                  : SHELL_COPY.pages.explorePastEmpty
+              }
               onPage={(next) => void fetchSection('past', next, 'date_desc', setPast)}
             />
           </div>

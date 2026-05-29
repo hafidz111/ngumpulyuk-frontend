@@ -35,6 +35,7 @@ export const SHELL_COPY = {
     exploreUpcomingEmpty: 'Belum ada agenda. Yuk jadi yang pertama ngadain!',
     exploreUpcomingEmptyFiltered: 'Gak nemu yang pas. Coba ganti filter ya.',
     explorePastEmpty: 'Belum ada event yang udah lewat.',
+    explorePastEmptyFiltered: 'Gak nemu event lewat yang cocok. Coba kata kunci lain ya.',
     mapTitle: 'Peta Event',
     mapSubtitle: 'Cuma event yang belum lewat, biar gak FOMO ke yang udah done',
     communityTitle: 'Komunitas',

@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, Users, Trophy, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTimeId, formatLocation } from '@/shared/lib/formatters';
 import { DIFFICULTY_LABELS } from '../event-data';
+import { isEventPast } from '../lib/event-schedule';
 
 const DIFFICULTY_COLORS = {
   beginner: 'bg-emerald-100 text-emerald-700',
@@ -37,6 +38,10 @@ export function EventCard({ event, className, idx = 0 }) {
     event.has_joined ||
     event.registration_status === 'joined',
   );
+  const isPast = isEventPast(event);
+  const showStatusOverlay =
+    isPast ||
+    (event.status && String(event.status).toLowerCase() !== 'upcoming');
 
   const pastelPalettes = [
     { bg: 'bg-[#FFB3BA]', text: 'text-[#9A1F2A]' },
@@ -51,6 +56,7 @@ export function EventCard({ event, className, idx = 0 }) {
   return (
     <Link
       to={`/events/${event.id}`}
+      state={{ preview: event }}
       className={cn(
         'group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md',
         className,
@@ -121,15 +127,15 @@ export function EventCard({ event, className, idx = 0 }) {
           </div>
         )}
 
-        {event.status && event.status !== 'upcoming' ? (
+        {showStatusOverlay ? (
           <div className='absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 group-hover:bg-black/50'>
             <span className='rounded-full bg-black/60 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-sm'>
               {event.status === 'ongoing'
                 ? 'Berlangsung'
-                : event.status === 'completed'
-                  ? 'Selesai'
-                  : event.status === 'cancelled'
-                    ? 'Dibatalkan'
+                : event.status === 'cancelled'
+                  ? 'Dibatalkan'
+                  : isPast || event.status === 'completed'
+                    ? 'Selesai'
                     : event.status}
             </span>
           </div>
@@ -184,10 +190,13 @@ export function EventCard({ event, className, idx = 0 }) {
                 'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
                 isJoined
                   ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-100'
-                  : 'border border-[#FF8000]/30 bg-[#FFF1E5] text-[#FF8000] group-hover:border-[#FF8000]/50 group-hover:bg-[#FF8000] group-hover:text-white',
+                  : isPast
+                    ? 'cursor-default border border-border bg-muted text-muted-foreground opacity-70'
+                    : 'border border-[#FF8000]/30 bg-[#FFF1E5] text-[#FF8000] group-hover:border-[#FF8000]/50 group-hover:bg-[#FF8000] group-hover:text-white',
               )}
             >
-              {isJoined ? 'Lihat Detail' : 'Gabung'} <span aria-hidden>→</span>
+              {isJoined ? 'Lihat Detail' : isPast ? 'Sudah Lewat' : 'Gabung'}{' '}
+              <span aria-hidden>→</span>
             </span>
           </div>
         </div>

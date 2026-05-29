@@ -39,6 +39,7 @@ import {
   DEFAULT_MAP_ZOOM,
 } from '@/presentation/events/event-data';
 import { fetchAllMapEvents } from '@/presentation/events/lib/fetch-all-map-events';
+import { buildGoogleMapsUrl } from '@/shared/lib/google-maps-url';
 import { InlineTextSkeleton } from '@/presentation/components/skeletons';
 import {
   formatEventDateRange,
@@ -262,9 +263,7 @@ export default function EventMapPage() {
       ? withDistance.filter((x) => x.distKm <= MAX_DISTANCE_KM)
       : withDistance;
 
-    list = filteredByRadius
-      .sort((a, b) => a.distKm - b.distKm)
-      .map((x) => x.e);
+    list = filteredByRadius.sort((a, b) => a.distKm - b.distKm).map((x) => x.e);
 
     return list;
   }, [allEvents, search, category, userPos]);
@@ -336,7 +335,8 @@ export default function EventMapPage() {
       <div
         className={cn(
           'relative min-h-0 flex-1',
-          sidebarOpen && 'max-lg:pointer-events-none max-lg:[&_.leaflet-container]:!hidden',
+          sidebarOpen &&
+            'max-lg:pointer-events-none max-lg:[&_.leaflet-container]:!hidden',
         )}
         aria-hidden={sidebarOpen || undefined}
       >
@@ -383,7 +383,6 @@ export default function EventMapPage() {
               </div>
             </div>
 
-            {/* Filter Island */}
             <div className='relative shrink-0 pointer-events-auto'>
               <button
                 type='button'
@@ -399,7 +398,6 @@ export default function EventMapPage() {
                 )}
               </button>
 
-              {/* Separate Filter Container */}
               {filtersOpen && (
                 <div className='absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[280px] rounded-3xl border border-border/60 bg-surface-bright/95 p-5 shadow-2xl backdrop-blur-md sm:w-[320px] pointer-events-auto'>
                   <div className='space-y-1.5'>
@@ -457,12 +455,10 @@ export default function EventMapPage() {
           />
           {userPos && <FlyToUser userPos={userPos} />}
 
-          {/* User position marker */}
           {userPos && (
             <Marker position={userPos} icon={userIcon} zIndexOffset={1000} />
           )}
 
-          {/* Event markers (all filtered) */}
           {!loading &&
             filteredEvents.map((ev) => {
               const lat = parseFloat(ev.latitude);
@@ -490,7 +486,11 @@ export default function EventMapPage() {
             pixel={popupPixel}
             userPos={userPos}
             onClose={closePopup}
-            onNavigate={() => navigate(`/events/${selectedEvent.id}`)}
+            onNavigate={() =>
+              navigate(`/events/${selectedEvent.id}`, {
+                state: { preview: selectedEvent },
+              })
+            }
           />
         )}
 
@@ -580,6 +580,12 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
         )
       : null;
 
+  const googleMapsUrl = buildGoogleMapsUrl({
+    latitude: event.latitude,
+    longitude: event.longitude,
+    address: locationDisplay,
+  });
+
   return (
     <div
       ref={popupRef}
@@ -616,7 +622,6 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
         )}
 
         <div className='p-3.5'>
-          {/* Category + close */}
           <div className='mb-2 flex items-start justify-between gap-2'>
             <span className='inline-block rounded-full bg-primary-container/15 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-primary-container'>
               {event.category || 'Event'}
@@ -661,7 +666,6 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
             </p>
           </div>
 
-          {/* Status badge */}
           {event.status && (
             <div className='mt-2'>
               <span
@@ -689,13 +693,25 @@ function EventPopupCard({ event, pixel, userPos, onClose, onNavigate }) {
             </div>
           )}
 
-          <button
-            type='button'
-            onClick={onNavigate}
-            className='mt-3 w-full rounded-xl bg-primary-container px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary-container/30 transition hover:bg-primary-container/90 active:scale-[0.98]'
-          >
-            Lihat Detail →
-          </button>
+          <div className='mt-3 flex flex-col gap-2'>
+            {googleMapsUrl ? (
+              <a
+                href={googleMapsUrl}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='w-full rounded-xl border border-border/70 bg-background px-4 py-2 text-center text-xs font-semibold text-foreground transition hover:border-[#FF8000]/40 hover:bg-[#FFF1E5]/60'
+              >
+                Buka di Google Maps
+              </a>
+            ) : null}
+            <button
+              type='button'
+              onClick={onNavigate}
+              className='w-full rounded-xl bg-primary-container px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary-container/30 transition hover:bg-primary-container/90 active:scale-[0.98]'
+            >
+              Lihat Detail →
+            </button>
+          </div>
         </div>
       </div>
     </div>
