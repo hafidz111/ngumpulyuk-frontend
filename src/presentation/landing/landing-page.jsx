@@ -1,5 +1,4 @@
 import { Navigate } from 'react-router-dom';
-import { AlertCircle } from 'lucide-react';
 
 import { ROUTES } from '../../shared/config/routes';
 import { useAuth } from '../auth/hooks/use-auth';
@@ -16,7 +15,7 @@ import { useLandingContent } from './hooks/use-landing-content';
 
 function LandingPage() {
   const { isAuthenticated, user } = useAuth();
-  const { content, isRefreshing, error } = useLandingContent();
+  const { content, isRefreshing } = useLandingContent();
 
   if (isAuthenticated) {
     if (!user?.isOnboarded) {
@@ -28,15 +27,6 @@ function LandingPage() {
   return (
     <div className='bg-surface text-foreground'>
       <LandingHeader brand={content.brand} navigation={content.navigation} />
-
-      {error ? (
-        <div className='border-b border-destructive/20 bg-destructive/5 px-6 py-3'>
-          <p className='mx-auto flex max-w-7xl items-center gap-2 text-sm text-destructive'>
-            <AlertCircle className='size-4 shrink-0' aria-hidden />
-            {error}. Angka dan event di bawah mungkin belum terbaru.
-          </p>
-        </div>
-      ) : null}
 
       <main>
         <LandingHeroSection hero={content.hero} isRefreshing={isRefreshing} />

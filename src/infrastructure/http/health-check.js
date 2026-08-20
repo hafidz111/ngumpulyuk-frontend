@@ -49,11 +49,20 @@ export async function checkBackendReady({
 
 export const RETURN_AFTER_OUTAGE_KEY = 'ngumpulyuk.returnAfterOutage';
 
+/** Halaman yang tetap bisa diakses saat backend down (landing = marketing statis). */
+export function isOutageRedirectExemptPath(pathname) {
+  return (
+    pathname === ROUTES.home ||
+    pathname === ROUTES.maintenance ||
+    pathname.startsWith('/error/')
+  );
+}
+
 export function saveReturnPathBeforeOutage() {
   if (typeof window === 'undefined') return;
   const path = window.location.pathname;
   const search = window.location.search || '';
-  if (path === ROUTES.maintenance || path.startsWith('/error/')) return;
+  if (isOutageRedirectExemptPath(path)) return;
   sessionStorage.setItem(RETURN_AFTER_OUTAGE_KEY, `${path}${search}`);
 }
 

@@ -242,3 +242,102 @@ export function createEmptyLandingContent() {
     },
   });
 }
+
+/** Fallback statis saat API landing gagal — landing tetap penuh konten. */
+export function createDummyLandingContent() {
+  return mapLandingPublicResponse({
+    stats: {
+      users: 1280,
+      communities: 36,
+      events: 52,
+      events_total: 52,
+      participants: 3400,
+      recent_joins_week: 94,
+    },
+    featured_events: [
+      {
+        id: 'dummy-event-1',
+        category: 'Olahraga',
+        title: 'Futsal Minggu Pagi — Slot Terbuka',
+        location_area: 'Jakarta Selatan',
+        location_address: 'Lapangan indoor',
+        cover_image: '',
+        participant_count: 8,
+        max_participants: 12,
+      },
+      {
+        id: 'dummy-event-2',
+        category: 'Kopi',
+        title: 'Ngopi & Curhat Sabtu Sore',
+        location_area: 'Bandung',
+        location_address: 'Kafe di Dago',
+        cover_image: '',
+        participant_count: 14,
+        max_participants: 20,
+      },
+      {
+        id: 'dummy-event-3',
+        category: 'Belajar',
+        title: 'Study Club UI/UX — Project Review',
+        location_area: 'Surabaya',
+        location_address: 'Co-working space',
+        cover_image: '',
+        participant_count: 6,
+        max_participants: 10,
+      },
+      {
+        id: 'dummy-event-4',
+        category: 'Musik',
+        title: 'Open Mic Akustik Malam Jumat',
+        location_area: 'Yogyakarta',
+        location_address: 'Taman kota',
+        cover_image: '',
+        participant_count: 22,
+        max_participants: 30,
+      },
+    ],
+    featured_communities: [
+      {
+        id: 'dummy-circle-1',
+        name: 'Runners ID',
+        category: 'Olahraga',
+        description: 'Lari bareng tiap weekend, dari pemula sampai yang udah marathon.',
+        cover_image: '',
+        member_count: 420,
+        upcoming_events_count: 3,
+        creator: { full_name: 'Ayu', username: 'ayu' },
+      },
+      {
+        id: 'dummy-circle-2',
+        name: 'Design Hangout',
+        category: 'Kreatif',
+        description: 'Share porto, kritik sehat, dan collab project kecil-kecilan.',
+        cover_image: '',
+        member_count: 186,
+        upcoming_events_count: 2,
+        creator: { full_name: 'Raka', username: 'raka' },
+      },
+      {
+        id: 'dummy-circle-3',
+        name: 'Board Game Night',
+        category: 'Hiburan',
+        description: 'Codenames, Catan, apa aja — yang penting ngumpul dan ketawa.',
+        cover_image: '',
+        member_count: 95,
+        upcoming_events_count: 1,
+        creator: { full_name: 'Dimas', username: 'dimas' },
+      },
+    ],
+    hero: {
+      spotlight_event: { title: 'Futsal Minggu Pagi — Slot Terbuka' },
+      social_members: {
+        total: 1280,
+        preview: [
+          { id: 'dummy-m1', full_name: 'Salsa', username: 'salsa' },
+          { id: 'dummy-m2', full_name: 'Bima', username: 'bima' },
+          { id: 'dummy-m3', full_name: 'Nadia', username: 'nadia' },
+        ],
+      },
+    },
+  });
+}

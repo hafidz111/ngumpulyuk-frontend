@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-import { saveReturnPathBeforeOutage } from '@/infrastructure/http/health-check';
+import {
+  isOutageRedirectExemptPath,
+  saveReturnPathBeforeOutage,
+} from '@/infrastructure/http/health-check';
 import { API_BASE_URL } from '@/shared/config/env';
 import { ROUTES } from '@/shared/config/routes';
 import {
@@ -87,7 +90,7 @@ apiClient.interceptors.response.use(
     if (status >= 500) {
       if (
         typeof window !== 'undefined' &&
-        !window.location.pathname.startsWith('/error/')
+        !isOutageRedirectExemptPath(window.location.pathname)
       ) {
         saveReturnPathBeforeOutage();
         window.location.assign(`/error/${status}`);
@@ -173,8 +176,9 @@ function forceLoginRedirect() {
 function redirectToMaintenance() {
   if (typeof window === 'undefined') return;
 
-  if (window.location.pathname !== ROUTES.maintenance) {
-    saveReturnPathBeforeOutage();
-    window.location.assign(`${window.location.origin}${ROUTES.maintenance}`);
-  }
+  const path = window.location.pathname;
+  if (isOutageRedirectExemptPath(path)) return;
+
+  saveReturnPathBeforeOutage();
+  window.location.assign(`${window.location.origin}${ROUTES.maintenance}`);
 }

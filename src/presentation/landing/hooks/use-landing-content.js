@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import {
-  createEmptyLandingContent,
+  createDummyLandingContent,
   mapLandingPublicResponse,
 } from '@/application/landing/map-landing-public-response';
 import { landingApi } from '@/infrastructure/landing/landing-api';
@@ -10,36 +10,24 @@ import { landingApi } from '@/infrastructure/landing/landing-api';
  * @returns {{
  *   content: ReturnType<typeof mapLandingPublicResponse>;
  *   isRefreshing: boolean;
- *   hasLiveData: boolean;
- *   error: string | null;
  * }}
  */
 export function useLandingContent() {
-  const [content, setContent] = useState(() => createEmptyLandingContent());
+  const [content, setContent] = useState(() => createDummyLandingContent());
   const [isRefreshing, setIsRefreshing] = useState(true);
-  const [hasLiveData, setHasLiveData] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setIsRefreshing(true);
-      setError(null);
       try {
         const res = await landingApi.getPublic();
         if (cancelled) return;
         setContent(mapLandingPublicResponse(res.data));
-        setHasLiveData(true);
-      } catch (err) {
+      } catch {
         if (cancelled) return;
-        setContent(createEmptyLandingContent());
-        setHasLiveData(false);
-        setError(
-          err?.response?.data?.error?.message ||
-            err?.message ||
-            'Gagal memuat data landing',
-        );
+        setContent(createDummyLandingContent());
       } finally {
         if (!cancelled) setIsRefreshing(false);
       }
@@ -51,5 +39,5 @@ export function useLandingContent() {
     };
   }, []);
 
-  return { content, isRefreshing, hasLiveData, error };
+  return { content, isRefreshing };
 }
